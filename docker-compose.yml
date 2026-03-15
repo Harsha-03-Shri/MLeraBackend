@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - main-api
+      - db-api
+      - notification-api
+    restart: unless-stopped
+
+  main-api:
+    image: ${DOCKER_REGISTRY}/prod-main-api:${IMAGE_TAG:-latest}
+    environment:
+      - DB_SERVICE_URL=http://db-api:8080
+      - NOTIFICATION_SERVICE_URL=http://notification-api:8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db-api:
+    image: ${DOCKER_REGISTRY}/prod-db-system:${IMAGE_TAG:-latest}
+    environment:
+      - DB_HOST=${RDS_ENDPOINT}
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=${ELASTICACHE_ENDPOINT}
+      - REDIS_PORT=6379
+      - AWS_REGION=ap-south-1
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  notification-api:
+    image: ${DOCKER_REGISTRY}/prod-notification:${IMAGE_TAG:-latest}
+    environment:
+      - AWS_REGION=ap-south-1
+      - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

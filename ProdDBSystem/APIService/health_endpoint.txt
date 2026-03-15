@@ -1,0 +1,5 @@
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for ALB target group."""
+    return {"status": "healthy"}

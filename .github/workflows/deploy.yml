@@ -1,0 +1,83 @@
+name: Build and Deploy to EC2
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'ProdMainAPI/**'
+      - 'ProdDBSystem/**'
+      - 'ProdNotification/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 812661756903.dkr.ecr.ap-south-1.amazonaws.com
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: prod-main-api
+            path: ProdMainAPI
+            dockerfile: ProdMainAPI/Dockerfile
+          - name: prod-db-system
+            path: ProdDBSystem
+            dockerfile: ProdDBSystem/Dockerfile
+          - name: prod-notification
+            path: ProdNotification/NotificationApi
+            dockerfile: ProdNotification/NotificationApi/Dockerfile
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ matrix.service.name }}:$IMAGE_TAG -f ${{ matrix.service.dockerfile }} ${{ matrix.service.path }}
+          docker tag ${{ env.ECR_REGISTRY }}/${{ matrix.service.name }}:$IMAGE_TAG ${{ env.ECR_REGISTRY }}/${{ matrix.service.name }}:latest
+          docker push ${{ env.ECR_REGISTRY }}/${{ matrix.service.name }}:$IMAGE_TAG
+          docker push ${{ env.ECR_REGISTRY }}/${{ matrix.service.name }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 private_key.pem
+          
+          # Copy deployment files to EC2
+          scp -i private_key.pem -o StrictHostKeyChecking=no docker-compose.yml nginx.conf deploy.sh ${USER}@${HOST}:/home/${USER}/app/
+          
+          # SSH into EC2 and run deployment
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} << 'EOF'
+            cd /home/${USER}/app
+            chmod +x deploy.sh
+            ./deploy.sh
+          EOF
+          
+          rm -f private_key.pem

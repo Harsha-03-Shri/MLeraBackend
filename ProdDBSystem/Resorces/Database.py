@@ -1,0 +1,66 @@
+"""PostgreSQL connection pool manager.
+
+Provides a SimpleConnectionPool for the application and exposes
+methods to acquire/release connections and shut down the pool.
+"""
+
+import os
+from psycopg2 import pool
+from psycopg2.extras import register_uuid
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+DB_NAME = str(os.getenv("DB_NAME", "postgres"))
+DB_USER = str(os.getenv("DB_USER", "postgres"))
+DB_PASS = str(os.getenv("DB_PASS", "password"))
+DB_HOST = str(os.getenv("DB_HOST", "localhost"))
+DB_PORT = int(os.getenv("DB_PORT", 5432))
+
+class Database:
+    """Manages a psycopg2 SimpleConnectionPool for PostgreSQL."""
+
+    pool = None
+
+    def __init__(self):
+        """Initialize the connection pool and register UUID type support."""
+        try:
+            self.pool = pool.SimpleConnectionPool(
+                minconn=1, maxconn=10,
+                host=DB_HOST, database=DB_NAME,
+                user=DB_USER, password=DB_PASS,
+                port=DB_PORT
+            )
+            register_uuid()
+            logging.info("DB pool created successfully")
+        except Exception as e:
+            logging.error(f"Failure creating DB Pool: {e}")
+
+    def getDBconnection(self):
+        """Yield a connection from the pool and return it on completion.
+
+        Yields:
+            A psycopg2 connection object.
+        """
+        conn = None
+        try:
+            conn = self.pool.getconn()
+            yield conn
+        except Exception as e:
+            logging.error(f"Connection to DB Pool failed: {e}")
+        finally:
+            if conn:
+                self.pool.putconn(conn)
+
+    def shutdownDBPool(self):
+        """Close all connections in the pool."""
+        try:
+            if self.pool:
+                self.pool.closeall()
+                logging.info("Closed the DB pool")
+        except Exception as e:
+            logging.error(f"Failure trying to close the pool: {e}")
+
+
+
+
