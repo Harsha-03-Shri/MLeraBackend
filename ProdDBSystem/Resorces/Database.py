@@ -37,20 +37,29 @@ class Database:
             logging.error(f"Failure creating DB Pool: {e}")
 
     def getDBconnection(self):
-        """Yield a connection from the pool and return it on completion.
+        """Get a connection from the pool.
 
-        Yields:
+        Returns:
             A psycopg2 connection object.
         """
-        conn = None
         try:
             conn = self.pool.getconn()
-            yield conn
+            return conn
         except Exception as e:
             logging.error(f"Connection to DB Pool failed: {e}")
-        finally:
+            raise
+    
+    def releaseDBconnection(self, conn):
+        """Return a connection to the pool.
+        
+        Args:
+            conn: Connection to return to the pool.
+        """
+        try:
             if conn:
                 self.pool.putconn(conn)
+        except Exception as e:
+            logging.error(f"Failed to return connection to pool: {e}")
 
     def shutdownDBPool(self):
         """Close all connections in the pool."""

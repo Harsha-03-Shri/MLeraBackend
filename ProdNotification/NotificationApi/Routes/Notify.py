@@ -45,16 +45,16 @@ async def notify_user(notify: Notify, request: Request):
         request: FastAPI request object with app state (db, sns connections)
         
     Returns:
-        dict: Success response (implicitly returns 200 OK)
+        dict: Success response
         
     Raises:
         HTTPException 400: If required fields are missing (e.g., QuizPercentage for ModuleCompletion)
         HTTPException 500: If message formatting or SNS publishing fails
         
     Example:
-        POST /api/v1/notify/
+        POST /notify/
         {
-            "user_id": "123e4567-e89b-12d3-a456-426614174000",
+            "userId": "123e4567-e89b-12d3-a456-426614174000",
             "TemplateType": "ModuleCompletion",
             "QuizPercentage": 85
         }
@@ -98,6 +98,7 @@ async def notify_user(notify: Notify, request: Request):
             }
             request.app.state.sns.publish(message,messageAttributes)
             logging.info(f"Notification sent successfully for user {userId}.")
+            return {"message": "Notification sent successfully"}
 
         except Exception as e:
             logging.error(f"Error occurred while publishing message to SNS for user {userId}: {e}")

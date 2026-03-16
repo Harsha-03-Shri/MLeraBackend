@@ -4,25 +4,14 @@ Exposes endpoints to purchase a course and retrieve a user's course progress,
 using Redis for caching and SQS for async event processing.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 import logging
 import json
-from main import app
 
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/course", tags=["Course"])
-
-
-def getDB():
-    yield from app.state.db_instance.getDBconnection()
-
-def getRedis():
-    yield from app.state.redis_instance.getRedisconnection()
-
-def getSQS():
-    yield from app.state.sqs_instance
 
 
 class CoursePurchase(BaseModel):
@@ -31,7 +20,7 @@ class CoursePurchase(BaseModel):
 
 
 @router.post("/purchase")
-async def purchaseCourse(coursePurchase: CoursePurchase, conn=Depends(getDB), redis=Depends(getRedis), sqs=Depends(getSQS)):
+async def purchaseCourse(coursePurchase: CoursePurchase, request: Request):
     """Queue a course purchase event and cache the result.
 
     Sends a purchaseCourse event to SQS for async processing and
@@ -50,6 +39,9 @@ async def purchaseCourse(coursePurchase: CoursePurchase, conn=Depends(getDB), re
         HTTPException 500: On internal errors.
     """
     try:
+        redis = await request.app.state.redis_instance.getRedisconnection()
+        sqs = request.app.state.sqs_instance
+        
         data = {
             "userId": coursePurchase.userId,
             "courseName": coursePurchase.courseName
@@ -71,7 +63,7 @@ async def purchaseCourse(coursePurchase: CoursePurchase, conn=Depends(getDB), re
 
 
 @router.get("/progress/{userId}/{courseName}")
-async def getCourseProgress(userId: str, courseName: str, conn=Depends(getDB), redis=Depends(getRedis), sqs=Depends(getSQS)):
+async def getCourseProgress(userId: str, courseName: str, request: Request):
     """Retrieve the progress of a user for a specific course.
 
     Checks Redis cache first; on miss, sends a courseProgress event to SQS.
@@ -92,6 +84,9 @@ async def getCourseProgress(userId: str, courseName: str, conn=Depends(getDB), r
         HTTPException 500: On internal errors.
     """
     try:
+        redis = await request.app.state.redis_instance.getRedisconnection()
+        sqs = request.app.state.sqs_instance
+        
         cachedData = await redis.hget(f"user:{userId}", "courseProgress")
         if cachedData and cachedData.get("courseName") == courseName:
             return cachedData

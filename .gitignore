@@ -29,3 +29,5 @@ Thumbs.db
 
 DEPLOYMENT.md
 .env.template
+FIXES_APPLIED.md
+GITHUB_ACTIONS_SSH_FIX.md

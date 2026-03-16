@@ -75,7 +75,7 @@ async def health_check():
     return {"status": "healthy"}
 
 ## Include routers
-app.include_router(notify_router, prefix="/notify", tags=["notifications"])
+app.include_router(notify_router, tags=["notifications"])
 app.include_router(user_router, prefix="/api/v1", tags=["User"])
 
 ###

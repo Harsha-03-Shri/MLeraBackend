@@ -150,17 +150,19 @@ class DBServiceClient:
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
 
     
-    async def submitQuizAnswers(self, userId, score):
+    async def submitQuizAnswers(self, userId, moduleName, score):
         """Submit quiz answers and score for a user.
         
         Args:
             userId: User's unique identifier
+            moduleName: Name of the module
             score: Quiz score to be recorded
         
         """
         try:
             payload = {
                 "userId": str(userId),
+                "moduleName": moduleName,
                 "score": score
             }
             response = await self.client.post("/practiceQuiz/submit", json=payload)
@@ -208,7 +210,7 @@ class DBServiceClient:
             payload = {
                 "userId": str(userId),
                 "moduleName": moduleName,
-                "Page ": pageName
+                "Page": pageName
             }
             response = await self.client.post("/module/update", json=payload)
             response.raise_for_status()

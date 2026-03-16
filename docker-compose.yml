@@ -30,10 +30,11 @@ services:
       - DB_PORT=5432
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PASS=${DB_PASSWORD}
       - REDIS_HOST=${ELASTICACHE_ENDPOINT}
       - REDIS_PORT=6379
       - AWS_REGION=ap-south-1
+      - AWS_DEFAULT_REGION=ap-south-1
       - SQS_QUEUE_URL=${SQS_QUEUE_URL}
     restart: unless-stopped
     healthcheck:
@@ -46,6 +47,7 @@ services:
     image: ${DOCKER_REGISTRY}/prod-notification:${IMAGE_TAG:-latest}
     environment:
       - AWS_REGION=ap-south-1
+      - AWS_DEFAULT_REGION=ap-south-1
       - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
       - DYNAMODB_TABLE=${DYNAMODB_TABLE}
     restart: unless-stopped

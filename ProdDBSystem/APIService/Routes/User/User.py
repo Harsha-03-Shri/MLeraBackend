@@ -4,12 +4,11 @@ Exposes endpoints to register a new user, authenticate an existing user,
 and fetch a user's profile, using PostgreSQL for persistence and Redis for caching.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, SecretStr, EmailStr, Field
 import bcrypt
 import logging
 import uuid
-from main import app
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,15 +28,8 @@ class UserLogin(BaseModel):
     Password: SecretStr
 
 
-def getDB():
-    yield from app.state.db_instance.getDBconnection()
-
-def getRedis():
-    yield from app.state.redis_instance.getRedisconnection()
-
-
 @router.post("/register")
-async def userRegistration(user: User, conn=Depends(getDB)):
+async def userRegistration(user: User, request: Request):
     """Register a new user and store credentials in the database.
 
     Hashes the user's password with bcrypt, inserts the user record
@@ -45,7 +37,7 @@ async def userRegistration(user: User, conn=Depends(getDB)):
 
     Args:
         user: Payload containing Name, Profession, Phone, Email, and Password.
-        conn: Database connection dependency.
+        request: FastAPI request object.
 
     Returns:
         A confirmation message with the new user's ID.
@@ -53,20 +45,22 @@ async def userRegistration(user: User, conn=Depends(getDB)):
     Raises:
         HTTPException 500: On database transaction errors or internal errors.
     """
+    conn = None
     try:
         userId = uuid.uuid4()
         password = user.Password.get_secret_value().encode()
         hashed = bcrypt.hashpw(password, bcrypt.gensalt())
 
+        conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO Users VALUES (%s,%s,%s,%s,%s)",
+                'INSERT INTO "User" ("UserId", "Name", "Profession", "Phone", "Email") VALUES (%s,%s,%s,%s,%s)',
                 (userId, user.Name, user.Profession, user.Phone, user.Email)
             )
             cursor.execute(
-                "INSERT INTO Auth VALUES (%s,%s,%s)",
-                (user.Email, hashed, userId)
+                'INSERT INTO "Auth" ("Email", "PasswordHash", "UserId") VALUES (%s,%s,%s)',
+                (user.Email, hashed.decode('utf-8'), userId)
             )
             conn.commit()
         except Exception as e:
@@ -89,10 +83,13 @@ async def userRegistration(user: User, conn=Depends(getDB)):
             status_code=500,
             detail="Internal error while registering user"
         )
+    finally:
+        if conn:
+            request.app.state.db_instance.releaseDBconnection(conn)
 
 
 @router.post("/login")
-async def userLogin(userlogin: UserLogin, conn=Depends(getDB)):
+async def userLogin(userlogin: UserLogin, request: Request):
     """Authenticate a user by verifying their password.
 
     Fetches the stored hashed password from the Auth table and
@@ -100,7 +97,7 @@ async def userLogin(userlogin: UserLogin, conn=Depends(getDB)):
 
     Args:
         userlogin: Payload containing Email and Password.
-        conn: Database connection dependency.
+        request: FastAPI request object.
 
     Returns:
         A dict containing the authenticated user's ID.
@@ -109,18 +106,20 @@ async def userLogin(userlogin: UserLogin, conn=Depends(getDB)):
         HTTPException 401: If credentials are invalid.
         HTTPException 500: On internal errors.
     """
+    conn = None
     try:
         email = userlogin.Email
         password = userlogin.Password.get_secret_value().encode()
 
+        conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT * FROM Auth WHERE Email = %s", (email,))
+            cursor.execute('SELECT * FROM "Auth" WHERE "Email" = %s', (email,))
             userData = cursor.fetchone()
         finally:
             cursor.close()
 
-        if not userData or not bcrypt.checkpw(password, userData[1].encode()):
+        if not userData or not bcrypt.checkpw(password, userData[1].encode('utf-8')):
             raise HTTPException(
                 status_code=401,
                 detail="Invalid email or password"
@@ -136,10 +135,13 @@ async def userLogin(userlogin: UserLogin, conn=Depends(getDB)):
             status_code=500,
             detail="Internal error while logging in user"
         )
+    finally:
+        if conn:
+            request.app.state.db_instance.releaseDBconnection(conn)
 
 
 @router.get("/profile/{userId}")
-async def userProfile(userId: str, conn=Depends(getDB), redis=Depends(getRedis)):
+async def userProfile(userId: str, request: Request):
     """Retrieve a user's profile by their ID.
 
     Checks Redis cache first; on miss, queries the database and
@@ -147,8 +149,7 @@ async def userProfile(userId: str, conn=Depends(getDB), redis=Depends(getRedis))
 
     Args:
         userId: The unique identifier of the user.
-        conn: Database connection dependency.
-        redis: Redis connection dependency.
+        request: FastAPI request object.
 
     Returns:
         A dict containing Name, Profession, Phone, and Email.
@@ -157,13 +158,16 @@ async def userProfile(userId: str, conn=Depends(getDB), redis=Depends(getRedis))
         HTTPException 404: If the user is not found.
         HTTPException 500: On internal errors.
     """
+    conn = None
     try:
+        redis = await request.app.state.redis_instance.getRedisconnection()
         cachedData = await redis.hget(f"user:{userId}", "profile")
         if cachedData:
             return cachedData
 
+        conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Users WHERE UserId = %s", (userId,))
+        cursor.execute('SELECT * FROM "User" WHERE "UserId" = %s', (userId,))
         userData = cursor.fetchone()
         cursor.close()
 
@@ -191,3 +195,6 @@ async def userProfile(userId: str, conn=Depends(getDB), redis=Depends(getRedis))
             status_code=500,
             detail="Internal error while fetching user profile"
         )
+    finally:
+        if conn:
+            request.app.state.db_instance.releaseDBconnection(conn)

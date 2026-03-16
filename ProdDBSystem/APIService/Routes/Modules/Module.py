@@ -4,22 +4,14 @@ Exposes endpoints to resume, update, and complete learning modules,
 using Redis for caching and SQS for async event processing.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 import logging
 import json
-from main import app
 
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter(prefix="/module", tags=["Module"])
-
-def getDB():
-    yield from app.state.db_instance.getDBconnection()
-def getRedis():
-    yield from app.state.redis_instance.getRedisconnection()
-def getSQS():
-    yield from app.state.sqs_instance
 
 class ModuleProgress(BaseModel):
     userId: str 
@@ -32,7 +24,7 @@ class ModuleCompletion(BaseModel):
     QuizPercentage: float = Field(default=None, ge=0, le=100)
 
 @router.get("/resume/{userId}/{moduleName}")
-async def resumeModule(userId: str, moduleName: str, conn = Depends(getDB), redis = Depends(getRedis), sqs = Depends(getSQS)):
+async def resumeModule(userId: str, moduleName: str, request: Request):
     """
     Retrieve the last saved progress for a user's module.
 
@@ -54,6 +46,9 @@ async def resumeModule(userId: str, moduleName: str, conn = Depends(getDB), redi
         HTTPException 500: On internal errors.
     """
     try:
+        redis = await request.app.state.redis_instance.getRedisconnection()
+        sqs = request.app.state.sqs_instance
+        
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
         if cachedData and cachedData.get("moduleName") == moduleName:
             return cachedData
@@ -86,7 +81,7 @@ async def resumeModule(userId: str, moduleName: str, conn = Depends(getDB), redi
         )
 
 @router.post("/update")
-async def updateModule(moduleProgress: ModuleProgress, conn = Depends(getDB), redis = Depends(getRedis), sqs = Depends(getSQS)):
+async def updateModule(moduleProgress: ModuleProgress, request: Request):
     """
     Update the last visited page for a user's module.
 
@@ -107,6 +102,9 @@ async def updateModule(moduleProgress: ModuleProgress, conn = Depends(getDB), re
         HTTPException 500: On internal errors.
     """
     try:
+        redis = await request.app.state.redis_instance.getRedisconnection()
+        sqs = request.app.state.sqs_instance
+        
         userId = moduleProgress.userId
         moduleName = moduleProgress.moduleName
         Page = moduleProgress.Page
@@ -148,7 +146,7 @@ async def updateModule(moduleProgress: ModuleProgress, conn = Depends(getDB), re
         )
 
 @router.post("/complete")
-async def completeModule(moduleCompletion: ModuleCompletion, conn = Depends(getDB), redis = Depends(getRedis), sqs = Depends(getSQS)):
+async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
     """
     Mark a module as completed for a user.
 
@@ -169,6 +167,8 @@ async def completeModule(moduleCompletion: ModuleCompletion, conn = Depends(getD
         HTTPException 500: On internal errors.
     """
     try:
+        sqs = request.app.state.sqs_instance
+        
         userId = moduleCompletion.userId
         moduleName = moduleCompletion.moduleName
         QuizPercentage = moduleCompletion.QuizPercentage

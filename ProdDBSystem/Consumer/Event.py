@@ -20,6 +20,7 @@ def submitPracticeQuiz(data):
     Args:
         data: Dict containing userId, moduleName, and score.
     """
+    conn = None
     try:
         userId = data.get("userId")
         moduleName = data.get("moduleName")
@@ -31,19 +32,25 @@ def submitPracticeQuiz(data):
 
         conn = db.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT ModuleId FROM Module WHERE ModuleName = %s", (moduleName,))
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = %s', (moduleName,))
         moduleId = cursor.fetchone()
         if not moduleId:
             logging.warning("Module not found for name: %s", moduleName)
+            cursor.close()
             return
 
-        cursor.execute("INSERT INTO PracticeQuiz (UserId, ModuleId, Score) VALUES (%s, %s, %s)", (userId, moduleId[0], score))
+        cursor.execute('INSERT INTO "PracticeQuiz" ("UserId", "ModuleId", "HighestScore", "LowestScore", "Attempts") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "HighestScore" = GREATEST("PracticeQuiz"."HighestScore", %s), "LowestScore" = LEAST("PracticeQuiz"."LowestScore", %s), "Attempts" = "PracticeQuiz"."Attempts" + 1', (userId, moduleId[0], score, score, 1, score, score))
         conn.commit()
         cursor.close()
         logging.info("Inserted practice quiz for user: %s, module: %s, score: %d", userId, moduleName, score)
 
     except Exception as e:
         logging.error(f"Error while processing practice quiz submission: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)
 
 
 def purchaseCourse(data):
@@ -52,6 +59,7 @@ def purchaseCourse(data):
     Args:
         data: Dict containing userId and courseName.
     """
+    conn = None
     try:
         userId = data.get("userId")
         courseName = data.get("courseName")
@@ -62,19 +70,25 @@ def purchaseCourse(data):
 
         conn = db.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT CourseId FROM Courses WHERE CourseName = %s", (courseName,))
+        cursor.execute('SELECT "CourseId" FROM "Course" WHERE "CourseName" = %s', (courseName,))
         courseId = cursor.fetchone()
         if not courseId:
             logging.warning("Course not found for name: %s", courseName)
+            cursor.close()
             return
 
-        cursor.execute("INSERT INTO UserCourses (UserId, CourseId) VALUES (%s, %s)", (userId, courseId[0]))
+        cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s)', (userId, courseId[0]))
         conn.commit()
         cursor.close()
         logging.info("Inserted course purchase for user: %s, course: %s", userId, courseName)
 
     except Exception as e:
         logging.error(f"Error while processing course purchase: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)
 
 
 def courseProgress(data):
@@ -87,6 +101,7 @@ def courseProgress(data):
         A dict with totalModules, inProgress, and completed counts,
         or None if required data is missing or not found.
     """
+    conn = None
     try:
         userId = data.get("userId")
         courseName = data.get("courseName")
@@ -97,24 +112,25 @@ def courseProgress(data):
 
         conn = db.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT CourseId FROM Courses WHERE CourseName = %s", (courseName,))
+        cursor.execute('SELECT "CourseId" FROM "Course" WHERE "CourseName" = %s', (courseName,))
         courseId = cursor.fetchone()
 
         if not courseId:
             logging.warning("Course not found for name: %s", courseName)
+            cursor.close()
             return
 
-        cursor.execute("SELECT COUNT(*) FROM Module WHERE CourseId = %s", (courseId[0],))
+        cursor.execute('SELECT COUNT(*) FROM "Module" WHERE "CourseId" = %s', (courseId[0],))
         totalModules = cursor.fetchone()[0]
 
-        cursor.execute("SELECT Completed FROM UserModuleProgress WHERE UserId = %s", (userId,))
+        cursor.execute('SELECT "Completed" FROM "UserModuleProgress" WHERE "UserId" = %s', (userId,))
         progress = cursor.fetchall()
         cursor.close()
 
         inprogress = 0
         completed = 0
         for row in progress:
-            if row[0] == 0:
+            if not row[0]:
                 inprogress += 1
             else:
                 completed += 1
@@ -128,6 +144,9 @@ def courseProgress(data):
 
     except Exception as e:
         logging.error(f"Error while processing course progress: {e}")
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)
 
 
 def resumeModule(data):
@@ -140,6 +159,7 @@ def resumeModule(data):
         A dict with userId, moduleName, and LastPage,
         or None if required data is missing or not found.
     """
+    conn = None
     try:
         userId = data.get("userId")
         moduleName = data.get("moduleName")
@@ -150,13 +170,14 @@ def resumeModule(data):
 
         conn = db.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT ModuleId FROM Module WHERE ModuleName = %s", (moduleName,))
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = %s', (moduleName,))
         moduleId = cursor.fetchone()
         if not moduleId:
             logging.warning("Module not found for name: %s", moduleName)
+            cursor.close()
             return
 
-        cursor.execute("SELECT Page FROM UserModuleProgress WHERE UserId = %s AND ModuleId = %s", (userId, moduleId[0]))
+        cursor.execute('SELECT "Page" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
         progress = cursor.fetchone()
         cursor.close()
 
@@ -168,6 +189,9 @@ def resumeModule(data):
 
     except Exception as e:
         logging.error(f"Error while processing resume module: {e}")
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)
 
 
 def updateModule(data):
@@ -176,6 +200,7 @@ def updateModule(data):
     Args:
         data: Dict containing userId, moduleName, and LastPage.
     """
+    conn = None
     try:
         userId = data.get("userId")
         moduleName = data.get("moduleName")
@@ -187,15 +212,16 @@ def updateModule(data):
 
         conn = db.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT ModuleId FROM Module WHERE ModuleName = %s", (moduleName,))
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = %s', (moduleName,))
         moduleId = cursor.fetchone()
         if not moduleId:
             logging.warning("Module not found for name: %s", moduleName)
+            cursor.close()
             return
 
         cursor.execute(
-            "INSERT INTO UserModuleProgress (UserId, ModuleId, Page) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE Page = %s",
-            (userId, moduleId[0], Page, Page)
+            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "Page", "Completed") VALUES (%s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "Page" = %s',
+            (userId, moduleId[0], Page, False, Page)
         )
         conn.commit()
         cursor.close()
@@ -203,6 +229,11 @@ def updateModule(data):
 
     except Exception as e:
         logging.error(f"Error while processing update module: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)
 
 
 def completeModule(data):
@@ -211,6 +242,7 @@ def completeModule(data):
     Args:
         data: Dict containing userId, moduleName, and QuizPercentage.
     """
+    conn = None
     try:
         userId = data.get("userId")
         moduleName = data.get("moduleName")
@@ -225,17 +257,18 @@ def completeModule(data):
             
         conn = db.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("SELECT ModuleId FROM Module WHERE ModuleName = %s", (moduleName,))
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = %s', (moduleName,))
         moduleId = cursor.fetchone()
         if not moduleId:
             logging.warning("Module not found for name: %s", moduleName)
+            cursor.close()
             return
 
         cursor.execute(
-            "UPDATE UserModuleProgress SET Completed = 1, CompletedOn = %s WHERE UserId = %s AND ModuleId = %s",
-            (datetime.datetime.now(), userId, moduleId[0])
+            'UPDATE "UserModuleProgress" SET "Completed" = %s, "CompletedOn" = %s WHERE "UserId" = %s AND "ModuleId" = %s',
+            (True, datetime.datetime.now(), userId, moduleId[0])
         )
-        cursor.execute("INSERT INTO Quiz (UserId, ModuleId, Percent , Pass) VALUES (%s, %s, %s, %s)", (userId, moduleId[0], QuizPercentage, QuizPercentage >= 70))
+        cursor.execute('INSERT INTO "Quiz" ("UserId", "ModuleId", "Percent", "Pass") VALUES (%s, %s, %s, %s)', (userId, moduleId[0], QuizPercentage, QuizPercentage >= 70))
 
         conn.commit()
         cursor.close()
@@ -243,3 +276,8 @@ def completeModule(data):
 
     except Exception as e:
         logging.error(f"Error while processing complete module: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)

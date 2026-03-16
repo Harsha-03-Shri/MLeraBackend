@@ -6,6 +6,7 @@ quiz performance reports for users.
 
 from fastapi import APIRouter, Depends, HTTPException
 import logging 
+from pydantic import BaseModel
 import uuid
 from utils.DBServiceClient import DBServiceClient
 from utils.Auth import getCurrentUser
@@ -16,24 +17,29 @@ router = APIRouter(prefix="/practicequiz", tags=["PracticeQuiz"])
 
 dbClient = DBServiceClient()
 
+class QuizSubmission(BaseModel):
+    """Quiz submission request model."""
+    moduleName: str
+    score: int
 
 @router.post("/submit")
-async def submitQuizAnswers(userId: uuid.UUID = Depends(getCurrentUser), score: str ):
+async def submitQuizAnswers(submission: QuizSubmission, userId: uuid.UUID = Depends(getCurrentUser)):
     """Submit quiz answers for authenticated user.
     
     Args:
+        submission: QuizSubmission containing moduleName and score
         userId: Authenticated user ID from JWT token
-        score: string containing quiz score
         
     Returns:
-        None
+        dict: Success message
         
     Raises:
         HTTPException: If submission fails
     """
     try:
         logging.info(f"Submitting quiz score for user: {userId}")
-        await dbClient.submitQuizScore(userId, score)
+        await dbClient.submitQuizAnswers(userId, submission.moduleName, submission.score)
+        return {"message": "Quiz submitted successfully"}
 
     except Exception as e:
         logging.error(f"Error submitting quiz answers: {str(e)}")
@@ -41,13 +47,14 @@ async def submitQuizAnswers(userId: uuid.UUID = Depends(getCurrentUser), score: 
 
 
 @router.get("/report")
-async def getQuizReport(userId: uuid.UUID = Depends(getCurrentUser),moduleName: str):
+async def getQuizReport(moduleName: str, userId: uuid.UUID = Depends(getCurrentUser)):
     """Retrieve quiz performance report for authenticated user.
     
     Fetches comprehensive quiz statistics including scores, completion rates,
     and performance across all attempted quizzes.
     
     Args:
+        moduleName: Name of the module for which to fetch reports
         userId: Authenticated user ID from JWT token
         
     Returns:
@@ -57,8 +64,8 @@ async def getQuizReport(userId: uuid.UUID = Depends(getCurrentUser),moduleName: 
         HTTPException: If report fetch fails
     """
     try:
-        logging.info(f"Fetching quiz report for user: {userId}")
-        report = await dbClient.getQuizReport(userId) 
+        logging.info(f"Fetching quiz report for user: {userId}, module: {moduleName}")
+        report = await dbClient.getQuizReport(userId, moduleName) 
         return report
 
     except Exception as e:

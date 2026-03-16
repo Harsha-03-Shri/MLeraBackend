@@ -74,9 +74,9 @@ if __name__ == "__main__":
     try:
         uvicorn.run(
             "main:app",
-            host="127.0.0.1",
+            host="0.0.0.0",
             port=8080,
-            reload=True
+            reload=False
         )
     except Exception as e:
         logging.error(f"Failure while starting the server: {e}")
