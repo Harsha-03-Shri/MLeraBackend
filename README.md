@@ -6,7 +6,7 @@ Complete backend system with CI/CD pipeline for deploying to AWS EC2.
 
 - **ProdMainAPI** - Main API Gateway (Port 8000)
 - **ProdDBSystem** - Database Service API (Port 8080)
-- **ProdNotification** - Notification Service (Port 8000)
+- **ProdNotification** - Notification Service (Port 8001)
 
 ## Quick Start
 
@@ -20,32 +20,50 @@ MLeraBackend/
 ├── ProdDBSystem/          # Database service
 ├── ProdNotification/      # Notification service
 ├── .github/workflows/     # CI/CD pipeline
+├── scripts/               # Deployment scripts
+│   ├── create-ecr.sh
+│   ├── create-rds.sh
+│   ├── create-elasticache.sh
+│   ├── create-sns-sqs.sh
+│   ├── create-sqs-db.sh
+│   ├── create-dynamodb.sh
+│   ├── populate-templates.sh
+│   ├── create-lambda-email.sh
+│   ├── create-lambda-db.sh
+│   ├── ec2-setup.sh
+│   ├── deploy.sh
+│   └── setup-all.sh       # Master setup script
 ├── docker-compose.yml     # Container orchestration
 ├── nginx.conf            # Reverse proxy config
-├── deploy.sh             # Deployment script
-├── create-ecr.sh         # ECR setup
-├── create-rds.sh         # RDS setup
-├── create-elasticache.sh # Redis setup
-├── ec2-setup.sh          # EC2 initial setup
 ├── .env.template         # Environment variables template
-└── DEPLOYMENT.md         # Complete deployment guide
+├── DEPLOYMENT.md         # Complete deployment guide
+└── LAMBDA_README.md      # Lambda functions documentation
 ```
 
 ## Deployment
 
-1. Create AWS resources (ECR, RDS, ElastiCache)
+### Quick Setup (Automated)
+```bash
+cd scripts
+./setup-all.sh
+```
+
+### Manual Setup
+1. Create AWS resources (ECR, RDS, ElastiCache, SNS, SQS, DynamoDB, Lambda)
 2. Setup EC2 instance
 3. Configure GitHub secrets
 4. Push to main branch - automatic deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
 
 ## Architecture
 
 ```
 GitHub → Actions → ECR → EC2 (Docker Compose)
                            ├── Nginx (port 80)
-                           ├── Main API
-                           ├── DB API
-                           └── Notification API
+                           ├── Main API (port 8000)
+                           ├── DB API (port 8080)
+                           └── Notification API (port 8001)
                                  ↓
                     RDS + ElastiCache (private subnet)
 ```

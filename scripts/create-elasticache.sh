@@ -8,7 +8,7 @@ CACHE_CLUSTER_ID="mlera-redis-cluster"
 CACHE_NODE_TYPE="cache.t3.micro"
 VPC_ID="vpc-05f426c085e90fc3e"
 PRIVATE_SUBNET_1="subnet-0d9dc14695f0cdf9c"
-PRIVATE_SUBNET_2="subnet-XXXXXXXX"  # Add your second private subnet
+PRIVATE_SUBNET_2="subnet-0deb674ce6d46b9bc"  # Add your second private subnet
 
 echo "Creating Cache Subnet Group..."
 aws elasticache create-cache-subnet-group \

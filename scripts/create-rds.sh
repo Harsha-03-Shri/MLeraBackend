@@ -6,13 +6,13 @@ set -e
 # Configuration
 DB_INSTANCE_ID="mlera-postgres-db"
 DB_NAME="mlera_db"
-DB_USERNAME="admin"
-DB_PASSWORD="YourSecurePassword123!"  # Change this!
+DB_USERNAME="mlera_admin"
+DB_PASSWORD="postgres"  # Change this!
 DB_INSTANCE_CLASS="db.t3.micro"
 ALLOCATED_STORAGE=20
 VPC_ID="vpc-05f426c085e90fc3e"
 PRIVATE_SUBNET_1="subnet-0d9dc14695f0cdf9c"
-PRIVATE_SUBNET_2="subnet-XXXXXXXX"  # Add your second private subnet
+PRIVATE_SUBNET_2="subnet-0deb674ce6d46b9bc"  # Add your second private subnet
 
 echo "Creating DB Subnet Group..."
 aws rds create-db-subnet-group \
@@ -22,17 +22,15 @@ aws rds create-db-subnet-group \
     --region ap-south-1 || echo "Subnet group may already exist"
 
 echo "Creating Security Group for RDS..."
-SG_ID=$(aws ec2 create-security-group \
-    --group-name mlera-rds-sg \
-    --description "Security group for MLera RDS" \
-    --vpc-id $VPC_ID \
-    --region ap-south-1 \
-    --query 'GroupId' \
-    --output text) || echo "Security group may already exist"
+SG_ID=$(aws ec2 describe-security-groups \
+    --filters Name=group-name,Values=mlera-rds-sg Name=vpc-id,Values=$VPC_ID \
+    --query 'SecurityGroups[0].GroupId' \
+    --output text \
+    --region ap-south-1)
 
 # Get EC2 security group ID
 EC2_SG_ID=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=YourEC2Name" \
+    --filters "Name=tag:Name,Values=MLeraServer" \
     --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
     --output text \
     --region ap-south-1)
@@ -50,14 +48,13 @@ aws rds create-db-instance \
     --db-instance-identifier $DB_INSTANCE_ID \
     --db-instance-class $DB_INSTANCE_CLASS \
     --engine postgres \
-    --engine-version 15.4 \
     --master-username $DB_USERNAME \
     --master-user-password $DB_PASSWORD \
     --allocated-storage $ALLOCATED_STORAGE \
     --db-subnet-group-name mlera-db-subnet-group \
     --vpc-security-group-ids $SG_ID \
     --db-name $DB_NAME \
-    --backup-retention-period 7 \
+    --backup-retention-period 0 \
     --no-publicly-accessible \
     --region ap-south-1
 

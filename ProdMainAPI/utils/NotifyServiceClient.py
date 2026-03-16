@@ -12,7 +12,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
-NotifyServiceURL = os.getenv("NOTIFY_SERVICE_URL")
+NotifyServiceURL = os.getenv("NOTIFICATION_SERVICE_URL")
 
 class NotifyServiceClient:
     """Async HTTP client for notification service operations.
@@ -42,7 +42,7 @@ class NotifyServiceClient:
                 "name": name,
                 "email": email
             }
-            response = await self.client.post("/user/create", json=payload)
+            response = await self.client.post("/api/v1/user/create", json=payload)
             response.raise_for_status()
                 
         except httpx.HTTPStatusError as exc:
@@ -69,7 +69,7 @@ class NotifyServiceClient:
             if event == "ModuleCompletion":
                 payload["QuizPercentage"] = quizPercentage
 
-            response = await self.client.post("/notify", json=payload)
+            response = await self.client.post("/notify/", json=payload)
             response.raise_for_status()
                 
         except httpx.HTTPStatusError as exc:

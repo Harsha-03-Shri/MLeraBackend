@@ -143,8 +143,14 @@ class Templates():
             Channel: Notification channel (e.g., 'email', 'apn', 'fcm')
             
         Returns:
-            dict: Template data with keys 'Subject' and 'Body', or None if not found
-            Example: {"Subject": "Welcome {Name}", "Body": "Hello {Name}..."}
+            dict: Template data with keys 'TemplateId', 'Subject', 'Body', 'Version', 'CreatedAt', or None if not found
+            Example: {
+                "TemplateId": "REG_EMAIL_001",
+                "Subject": "Welcome {Name}", 
+                "Body": "Hello {Name}...",
+                "Version": 1,
+                "CreatedAt": "2024-01-01T00:00:00Z"
+            }
             
         Raises:
             Exception: If DynamoDB get_item operation fails
@@ -155,7 +161,13 @@ class Templates():
             item = response.get('Item')
 
             if item:
-                return {"Subject": item.get('Subject'), "Body": item.get('Body')}
+                return {
+                    "TemplateId": item.get('TemplateId'),
+                    "Subject": item.get('Subject'), 
+                    "Body": item.get('Body'),
+                    "Version": item.get('Version'),
+                    "CreatedAt": item.get('CreatedAt')
+                }
             else:
                 logging.warning(f"Template {TemplateType} for channel {Channel} not found.")
                 return None

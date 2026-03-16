@@ -17,7 +17,7 @@ services:
     image: ${DOCKER_REGISTRY}/prod-main-api:${IMAGE_TAG:-latest}
     environment:
       - DB_SERVICE_URL=http://db-api:8080
-      - NOTIFICATION_SERVICE_URL=http://notification-api:8000
+      - NOTIFICATION_SERVICE_URL=http://notification-api:8001
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -52,7 +52,7 @@ services:
       - DYNAMODB_TABLE=${DYNAMODB_TABLE}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3

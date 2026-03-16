@@ -18,25 +18,26 @@ class UserCreate(BaseModel):
     """Request model for user creation endpoint.
 
     Attributes:
-        Name: Full name of the user, between 3 and 25 characters
-        Email: Valid email address of the user
+        userId: User ID string
+        name: Full name of the user, between 3 and 25 characters
+        email: Valid email address of the user
     """
-    Name: str = Field(min_length=3, max_length=25)
-    Email: EmailStr
+    userId: str
+    name: str = Field(min_length=3, max_length=25)
+    email: EmailStr
 
 @router.post("/create")
 async def createUser(user: UserCreate, request: Request):
     """Create a new user in the DynamoDB Users table.
 
-    Generates a new UUID for the user, then stores the user's
-    Name and Email in DynamoDB under the 'email' channel.
+    Uses the provided userId from the main API instead of generating a new one.
 
     Args:
-        user: UserCreate request body containing Name and Email
+        user: UserCreate request body containing userId, name and email
         request: FastAPI request object with app state (db connection)
 
     Returns:
-        dict: Newly generated user_id
+        dict: Success confirmation with user_id
         Example: {"user_id": "123e4567-e89b-12d3-a456-426614174000"}
 
     Raises:
@@ -45,15 +46,15 @@ async def createUser(user: UserCreate, request: Request):
     Example:
         POST /api/v1/user/create
         {
-            "Name": "John Doe",
-            "Email": "john@example.com"
+            "userId": "123e4567-e89b-12d3-a456-426614174000",
+            "name": "John Doe",
+            "email": "john@example.com"
         }
     """
     try:
-        userId = str(uuid.uuid4())
         db_user = UserDB(request.app.state.db)
-        db_user.create_user(userId, user.Name, user.Email)
-        return {"user_id": userId}
+        db_user.create_user(user.userId, user.name, user.email)
+        return {"user_id": user.userId}
     except Exception as e:
         logging.error(f"Error creating user: {e}")
         raise HTTPException(status_code=500, detail="Error creating user")
