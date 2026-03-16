@@ -219,7 +219,10 @@ def completeModule(data):
         if not all([userId, moduleName]) or QuizPercentage is None:
             logging.warning("Missing required fields in data: %s", json.dumps(data))
             return
-
+        if QuizPercentage < 70:
+            logging.warning("Quiz percentage below passing threshold for user: %s, module: %s, percentage: %d", userId, moduleName, QuizPercentage)
+            return f"Quiz percentage below passing threshold: {QuizPercentage}%"
+            
         conn = db.getDBconnection()
         cursor = conn.cursor()
         cursor.execute("SELECT ModuleId FROM Module WHERE ModuleName = %s", (moduleName,))
@@ -232,6 +235,8 @@ def completeModule(data):
             "UPDATE UserModuleProgress SET Completed = 1, CompletedOn = %s WHERE UserId = %s AND ModuleId = %s",
             (datetime.datetime.now(), userId, moduleId[0])
         )
+        cursor.execute("INSERT INTO Quiz (UserId, ModuleId, Percent , Pass) VALUES (%s, %s, %s, %s)", (userId, moduleId[0], QuizPercentage, QuizPercentage >= 70))
+
         conn.commit()
         cursor.close()
         logging.info("Completed module for user: %s, module: %s", userId, moduleName)

@@ -8,10 +8,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from Resorces import Database, Redis, SQS
-from Routes.User.User import router as userRouter
-from Routes.Course.Course import router as courseRouter
-from Routes.Modules.Module import router as moduleRouter
-from Routes.PracticeQuiz.PracticeQuiz import router as practiceQuizRouter
+from APIService.Routes.User.User import router as userRouter
+from APIService.Routes.Course.Course import router as courseRouter
+from APIService.Routes.Modules.Module import router as moduleRouter
+from APIService.Routes.PracticeQuiz.PracticeQuiz import router as practiceQuizRouter
 import logging
 import uvicorn
 

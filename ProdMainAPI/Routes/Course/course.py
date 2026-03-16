@@ -46,7 +46,7 @@ async def coursePurchase(course: CoursePurchase, userId: uuid.UUID = Depends(get
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.get("/progress")
-async def getCourseProgress(userId: uuid.UUID = Depends(getCurrentUser),courseName: str):
+async def getCourseProgress(courseName: str, userId: uuid.UUID = Depends(getCurrentUser)):
     """Fetch course progress statistics for authenticated user.
     
     Returns the number of modules completed, in progress, and yet to start

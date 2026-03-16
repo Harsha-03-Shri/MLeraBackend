@@ -52,3 +52,4 @@ def formMessage(templateData: dict, UserData: dict):
 
 
 if __name__ == "__main__":
+    pass
