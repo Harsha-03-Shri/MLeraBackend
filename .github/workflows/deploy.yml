@@ -71,7 +71,7 @@ jobs:
           chmod 600 private_key.pem
           
           # Copy deployment files to EC2
-          scp -i private_key.pem -o StrictHostKeyChecking=no docker-compose.yml nginx.conf deploy.sh ${USER}@${HOST}:/home/${USER}/app/
+          scp -i private_key.pem -o StrictHostKeyChecking=no docker-compose.yml nginx.conf scripts/deploy.sh ${USER}@${HOST}:/home/${USER}/app/
           
           # SSH into EC2 and run deployment
           ssh -i private_key.pem -o StrictHostKeyChecking=no ${USER}@${HOST} << 'EOF'
