@@ -6,7 +6,7 @@ methods to acquire/release connections and shut down the pool.
 
 import os
 from psycopg2 import pool
-from psycopg2.extras import register_uuid
+import psycopg2.extras 
 import logging
 
 logging.basicConfig(level=logging.INFO)
