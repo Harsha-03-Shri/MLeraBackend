@@ -17,7 +17,7 @@ import json
 import logging
 import asyncio
 import aiosmtplib
-from smtp_client import send_email
+from smtpClient import send_email
 
 logging.basicConfig(level=logging.INFO)
 

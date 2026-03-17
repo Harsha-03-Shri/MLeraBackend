@@ -120,6 +120,7 @@ class DBServiceClient:
             HTTPException: If profile fetch fails
         """
         try:
+            userId = str(userId)
             response = await self.client.get(f"/user/profile/{userId}")
             response.raise_for_status()
             return response.json()
