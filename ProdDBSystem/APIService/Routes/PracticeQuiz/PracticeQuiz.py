@@ -51,10 +51,11 @@ async def submitPracticeQuiz(userId: str, moduleName: str, score: int, request: 
 
         cachedData = await redis.hget(f"user:{userId}", "practiceQuizReport")
         if cachedData:
-            cachedData["HighestScore"] = max(cachedData["HighestScore"], score)
-            cachedData["LowestScore"] = min(cachedData["LowestScore"], score)
-            cachedData["Attempts"] += 1
-            await redis.hset(f"user:{userId}", "practiceQuizReport", cachedData)
+            data = json.loads(cachedData)
+            data["HighestScore"] = max(data["HighestScore"], score)
+            data["LowestScore"] = min(data["LowestScore"], score)
+            data["Attempts"] += 1
+            await redis.hset(f"user:{userId}", "practiceQuizReport", json.dumps(data))
 
         return {"message": "Practice quiz submission queued successfully"}
 
@@ -91,7 +92,7 @@ async def getPracticeQuizReport(userId: str, moduleName: str, request: Request):
         
         cachedData = await redis.hget(f"user:{userId}", "practiceQuizReport")
         if cachedData:
-            return cachedData
+            return json.loads(cachedData)
 
         conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
@@ -120,7 +121,7 @@ async def getPracticeQuizReport(userId: str, moduleName: str, request: Request):
             "Attempts": report[4],
         }
 
-        await redis.hset(f"user:{userId}", "practiceQuizReport", reportData)
+        await redis.hset(f"user:{userId}", "practiceQuizReport", json.dumps(reportData))
         return reportData
 
     except HTTPException:

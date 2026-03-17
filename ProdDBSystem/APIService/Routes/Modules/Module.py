@@ -50,8 +50,10 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
         sqs = request.app.state.sqs_instance
         
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
-        if cachedData and cachedData.get("moduleName") == moduleName:
-            return cachedData
+        if cachedData:
+            data = json.loads(cachedData)
+            if data.get("moduleName") == moduleName:
+                return data
 
         data = {
             "userId": userId,
@@ -70,7 +72,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
                 detail="Module progress not found"
             )
 
-        await redis.hset(f"user:{userId}", "resumeModule", progress)
+        await redis.hset(f"user:{userId}", "resumeModule", json.dumps(progress))
         return progress
 
     except Exception as e:
@@ -131,10 +133,12 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
 
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
 
-        if cachedData and cachedData.get("moduleName") == moduleName:
-            await redis.hdel(f"user:{userId}", "resumeModule")  
+        if cachedData:
+            data = json.loads(cachedData)
+            if data.get("moduleName") == moduleName:
+                await redis.hdel(f"user:{userId}", "resumeModule")  
         
-        await redis.hset(f"user:{userId}", "resumeModule", data)
+        await redis.hset(f"user:{userId}", "resumeModule", json.dumps(data))
 
         return {"message": "Module progress update queued successfully"}
 

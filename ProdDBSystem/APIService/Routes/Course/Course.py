@@ -88,8 +88,10 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
         sqs = request.app.state.sqs_instance
         
         cachedData = await redis.hget(f"user:{userId}", "courseProgress")
-        if cachedData and cachedData.get("courseName") == courseName:
-            return cachedData
+        if cachedData:
+            data = json.loads(cachedData)
+            if data.get("courseName") == courseName:
+                return data
 
         data = {
             "userId": userId,
@@ -102,7 +104,7 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
 
         progress = await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
         if progress:
-            await redis.hset(f"user:{userId}", "courseProgress", progress)
+            await redis.hset(f"user:{userId}", "courseProgress", json.dumps(progress))
             return progress
         else:
             raise HTTPException(

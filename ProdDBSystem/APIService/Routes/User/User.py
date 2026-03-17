@@ -9,6 +9,7 @@ from pydantic import BaseModel, SecretStr, EmailStr, Field
 import bcrypt
 import logging
 import uuid
+import json
 
 logging.basicConfig(level=logging.INFO)
 
@@ -165,7 +166,7 @@ async def userProfile(userId: str, request: Request):
         cachedData = await redis.hget(f"user:{userId}", "profile")
         if cachedData:
             logging.info(f"Cache hit for user {userId}")
-            return cachedData
+            return json.loads(cachedData)
         
         userId = uuid.UUID(userId)
 
@@ -188,7 +189,7 @@ async def userProfile(userId: str, request: Request):
             "Email": userData[4]
         }
 
-        await redis.hset(f"user:{userId}", "profile", profile)
+        await redis.hset(f"user:{userId}", "profile", json.dumps(profile))
         return profile
 
     except HTTPException:
