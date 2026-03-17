@@ -38,7 +38,7 @@ class DBServiceClient:
         try:
             payload = {
                 "userId": str(userId),
-                "CourseName": courseName
+                "courseName": courseName
             }
             response = await self.client.post("/course/purchase", json=payload)
             response.raise_for_status()
@@ -163,7 +163,7 @@ class DBServiceClient:
         try:
             payload = {
                 "userId": str(userId),
-                "ModuleName": moduleName,
+                "moduleName": moduleName,
                 "Score": score
             }
             response = await self.client.post("/practiceQuiz/submit", json=payload)
@@ -210,7 +210,7 @@ class DBServiceClient:
         try:
             payload = {
                 "userId": str(userId),
-                "ModuleName": moduleName,
+                "moduleName": moduleName,
                 "Page": pageName
             }
             response = await self.client.post("/module/update", json=payload)
@@ -234,7 +234,7 @@ class DBServiceClient:
         try:
             payload = {
                 "userId": str(userId),
-                "ModuleName": moduleName,
+                "moduleName": moduleName,
                 "QuizPercentage": quizPercentage
             }
             response = await self.client.post("/module/complete", json=payload)
