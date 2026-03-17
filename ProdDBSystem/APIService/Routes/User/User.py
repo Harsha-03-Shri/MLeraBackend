@@ -165,6 +165,7 @@ async def userProfile(userId: str, request: Request):
         cachedData = await redis.hget(f"user:{userId}", "profile")
         if cachedData:
             return cachedData
+        userId = uuid.UUID(userId)
 
         conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
