@@ -32,7 +32,6 @@ class Database:
                 user=DB_USER, password=DB_PASS,
                 port=DB_PORT
             )
-            register_uuid()
             logging.info("DB pool created successfully")
         except Exception as e:
             logging.error(f"Failure creating DB Pool: {e}")
