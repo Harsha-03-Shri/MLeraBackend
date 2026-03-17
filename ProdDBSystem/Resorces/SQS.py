@@ -20,7 +20,7 @@ class SQS:
 
     def __init__(self):
         """Initialize the boto3 SQS client."""
-        self.sqs = boto3.client("sqs", region_name="us-east-1")
+        self.sqs = boto3.client("sqs", region_name="ap-south-1")
 
     def get_queue_url(self):
         """Return the SQS queue URL from environment configuration.
