@@ -70,6 +70,7 @@ class DBServiceClient:
                 "Email": email,
                 "Password": password
             }
+            logging.info(f"DBUrl:{DBServiceURL}")
             response = await self.client.post("/user/register", json=payload)
             response.raise_for_status()
             return response.json().get("userId")
