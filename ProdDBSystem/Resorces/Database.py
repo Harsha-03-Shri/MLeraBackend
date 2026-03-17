@@ -10,6 +10,7 @@ from psycopg2.extras import register_uuid
 import logging
 
 logging.basicConfig(level=logging.INFO)
+psycopg2.extras.register_uuid()
 
 DB_NAME = str(os.getenv("DB_NAME", "postgres"))
 DB_USER = str(os.getenv("DB_USER", "postgres"))
