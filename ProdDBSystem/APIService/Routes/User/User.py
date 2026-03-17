@@ -54,6 +54,7 @@ async def userRegistration(user: User, request: Request):
         conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
         try:
+            logging.info("Writing into DB")
             cursor.execute(
                 'INSERT INTO "User" ("UserId", "Name", "Profession", "Phone", "Email") VALUES (%s,%s,%s,%s,%s)',
                 (userId, user.Name, user.Profession, user.Phone, user.Email)
