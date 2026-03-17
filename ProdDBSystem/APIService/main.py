@@ -7,7 +7,9 @@ and manages startup/shutdown of database, Redis, and SQS connections.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from Resorces import Database, Redis, SQS
+from Resorces.Database import Database
+from Resorces.Redis import Redis
+from Resorces.SQS import SQS
 from APIService.Routes.User.User import router as userRouter
 from APIService.Routes.Course.Course import router as courseRouter
 from APIService.Routes.Modules.Module import router as moduleRouter
