@@ -121,13 +121,18 @@ class DBServiceClient:
         """
         try:
             userId = str(userId)
+            logging.info(f"Calling DB API: GET /user/profile/{userId}")
             response = await self.client.get(f"/user/profile/{userId}")
+            logging.info(f"DB API Response Status: {response.status_code}")
             response.raise_for_status()
             return response.json()
 
         except httpx.HTTPStatusError as exc:
-            logging.error(f"Failed to fetch user profile: {exc.response.text}")
-            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)     
+            logging.error(f"Failed to fetch user profile: Status={exc.response.status_code}, Body={exc.response.text}")
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except Exception as e:
+            logging.error(f"Unexpected error fetching user profile: {type(e).__name__}: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error communicating with DB service: {str(e)}")     
     
     async def getQuizReport(self, userId,moduleName):
         """Retrieve quiz performance report for a user.
