@@ -266,7 +266,7 @@ class DBServiceClient:
         try:
             response = await self.client.get(f"/module/resume/{userId}/{moduleName}")
             response.raise_for_status()
-            return response.json().get("lastPage")
+            return response.json().get("LastPage")
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch module progress: {exc.response.text}")
