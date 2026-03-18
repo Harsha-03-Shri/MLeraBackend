@@ -53,6 +53,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
         if cachedData:
             data = json.loads(cachedData)
             if data.get("moduleName") == moduleName:
+                logging.info(f"Cache hit resume module")
                 return data
 
         data = {
