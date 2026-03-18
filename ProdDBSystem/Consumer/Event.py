@@ -179,6 +179,7 @@ def resumeModule(data):
 
         cursor.execute('SELECT "Page" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
         progress = cursor.fetchone()
+        logging.info(f"{progress[0] if progress else None}")
         cursor.close()
 
         return {
