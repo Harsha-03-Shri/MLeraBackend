@@ -19,6 +19,7 @@ dbClient = DBServiceClient()
 
 class QuizSubmission(BaseModel):
     """Quiz submission request model."""
+    userId: str
     moduleName: str
     score: int
 
@@ -38,7 +39,7 @@ async def submitQuizAnswers(submission: QuizSubmission, userId: uuid.UUID = Depe
     """
     try:
         logging.info(f"Submitting quiz score for user: {userId}")
-        await dbClient.submitQuizAnswers(userId, submission.moduleName, submission.score)
+        await dbClient.submitQuiz(userId, submission.moduleName, submission.score)
         return {"message": "Quiz submitted successfully"}
 
     except Exception as e:

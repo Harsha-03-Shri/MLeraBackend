@@ -157,7 +157,7 @@ class DBServiceClient:
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
 
     
-    async def submitQuizAnswers(self, userId, moduleName, score):
+    async def submitQuiz(self, userId, moduleName, score):
         """Submit quiz answers and score for a user.
         
         Args:

@@ -54,13 +54,13 @@ async def submitPracticeQuiz(submitData: Submit, request: Request):
         }
         await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
 
-        cachedData = await redis.hget(f"user:{userId}", "practiceQuizReport")
+        cachedData = await redis.hget(f"user:{submitData.userId}", "practiceQuizReport")
         if cachedData:
             data = json.loads(cachedData)
-            data["HighestScore"] = max(data["HighestScore"], score)
-            data["LowestScore"] = min(data["LowestScore"], score)
+            data["HighestScore"] = max(data["HighestScore"], submitData.score)
+            data["LowestScore"] = min(data["LowestScore"], submitData.score)
             data["Attempts"] += 1
-            await redis.hset(f"user:{userId}", "practiceQuizReport", json.dumps(data))
+            await redis.hset(f"user:{submitData.userId}", "practiceQuizReport", json.dumps(data))
 
         return {"message": "Practice quiz submission queued successfully"}
 
