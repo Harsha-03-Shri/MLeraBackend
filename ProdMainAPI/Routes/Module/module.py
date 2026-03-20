@@ -77,7 +77,7 @@ async def completeModule(module: ModuleCompletion, userId: uuid.UUID = Depends(g
         logging.info(f"Completing module for user {userId} on module: {module.ModuleName}")
 
         await dbClient.completeModule(userId, module.ModuleName, module.QuizPercentage)
-        await notifyClient.notifyRegistration(userId, "ModuleCompletion", module.QuizPercentage)
+        await notifyClient.notifyRegistration(userId, "ModuleCompletion", QuizPercentage=module.QuizPercentage, ModuleName=module.ModuleName)
 
         return {"message": f"Module '{module.ModuleName}' completed successfully for user {userId}"}
 
