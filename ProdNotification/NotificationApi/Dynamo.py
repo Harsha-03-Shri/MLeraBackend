@@ -11,7 +11,7 @@ import logging
 import uuid
 import os
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 

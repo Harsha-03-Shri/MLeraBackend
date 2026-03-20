@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 import logging
 import json
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 router = APIRouter(prefix="/module", tags=["Module"])
 

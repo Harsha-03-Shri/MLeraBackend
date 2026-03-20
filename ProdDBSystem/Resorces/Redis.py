@@ -8,7 +8,7 @@ import redis.asyncio as redis
 import os
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 REDIS_HOST = str(os.getenv("REDIS_HOST", "localhost"))
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))

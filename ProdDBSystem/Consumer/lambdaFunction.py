@@ -8,7 +8,7 @@ import json
 import logging
 from Event import submitPracticeQuiz, purchaseCourse, courseProgress, resumeModule, updateModule, completeModule
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 EVENT_HANDLERS = {
     "submitPracticeQuiz": submitPracticeQuiz,

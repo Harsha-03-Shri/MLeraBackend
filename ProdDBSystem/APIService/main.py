@@ -17,7 +17,7 @@ from APIService.Routes.PracticeQuiz.PracticeQuiz import router as practiceQuizRo
 import logging
 import uvicorn
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 
 @asynccontextmanager

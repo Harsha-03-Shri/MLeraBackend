@@ -9,7 +9,7 @@ import logging
 from Resorces import Database
 import datetime
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 db = Database()
 

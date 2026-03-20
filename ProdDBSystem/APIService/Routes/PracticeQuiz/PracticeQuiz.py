@@ -7,14 +7,19 @@ quiz performance report, using Redis for caching and SQS for async processing.
 from fastapi import APIRouter, HTTPException, Depends, Request
 import logging
 import json
+from pydantic import BaseModel, Field
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 router = APIRouter(prefix="/practiceQuiz", tags=["Practice Quiz"])
 
+class Submit(BaseModel):
+    userId: str
+    moduleName: str
+    score: int
 
 @router.post("/submit")
-async def submitPracticeQuiz(userId: str, moduleName: str, score: int, request: Request):
+async def submitPracticeQuiz(submitData: Submit, request: Request):
     """Submit a practice quiz score and update the cached report.
 
     Sends a submitPracticeQuiz event to SQS and updates the user's
@@ -39,9 +44,9 @@ async def submitPracticeQuiz(userId: str, moduleName: str, score: int, request: 
         sqs = request.app.state.sqs_instance
         
         data = {
-            "userId": userId,
-            "moduleName": moduleName,
-            "score": score
+            "userId": submitData.userId,
+            "moduleName": submitData.moduleName,
+            "score": submitData.score
         }
         message = {
             "eventType": "submitPracticeQuiz",

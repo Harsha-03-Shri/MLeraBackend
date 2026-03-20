@@ -9,7 +9,7 @@ from fastapi import HTTPException
 import os 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 
 DBServiceURL = os.getenv("DB_SERVICE_URL")

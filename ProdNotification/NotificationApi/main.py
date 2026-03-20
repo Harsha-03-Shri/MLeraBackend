@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from Routes.Notify import router as notify_router
 from Routes.user import router as user_router
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 app = FastAPI(
     title="Notification API",

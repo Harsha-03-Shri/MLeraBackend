@@ -9,7 +9,7 @@ from psycopg2 import pool
 import psycopg2.extras 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 psycopg2.extras.register_uuid()
 
 DB_NAME = str(os.getenv("DB_NAME", "postgres"))

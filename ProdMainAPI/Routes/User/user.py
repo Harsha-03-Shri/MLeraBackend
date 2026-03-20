@@ -12,7 +12,7 @@ from utils.DBServiceClient import DBServiceClient
 from utils.NotifyServiceClient import NotifyServiceClient
 from utils.Auth import getCurrentUser, createAccessToken
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 router = APIRouter(prefix="/user", tags=["User"])
 

@@ -11,7 +11,7 @@ import logging
 import uuid
 import json
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 router = APIRouter(prefix="/user", tags=["User"])
 

@@ -13,7 +13,7 @@ from Routes.Course.course import router as course_router
 from Routes.Module.module import router as module_router
 from Routes.PracticeQuiz.practiceQuiz import router as quiz_router
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 app = FastAPI(
     title="Learning Management System API",

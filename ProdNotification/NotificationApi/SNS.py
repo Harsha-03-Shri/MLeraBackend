@@ -9,7 +9,7 @@ import logging
 import os
 import json
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 topic_arn = os.getenv("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:MyTopic")
 

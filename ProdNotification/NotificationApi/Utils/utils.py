@@ -8,7 +8,7 @@ from pydantic import BaseModel
 import logging  
 import uuid
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 def formMessage(templateData: dict, UserData: dict):
     """Format notification message by combining template with user data.

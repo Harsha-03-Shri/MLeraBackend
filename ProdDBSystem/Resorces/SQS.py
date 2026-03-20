@@ -8,7 +8,7 @@ import boto3
 import logging
 import os
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 QueueUrl = os.getenv("SQS_QUEUE_URL")
 

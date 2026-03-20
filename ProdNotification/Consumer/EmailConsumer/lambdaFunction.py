@@ -19,7 +19,7 @@ import asyncio
 import aiosmtplib
 from smtpClient import send_email
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 def handler(event, context):
     """Lambda handler function for processing email notification messages.
