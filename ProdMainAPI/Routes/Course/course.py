@@ -15,6 +15,7 @@ logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %
 
 router = APIRouter(prefix="/course", tags=["Course"])
 dbClient = DBServiceClient()
+notifyClient = NotifyServiceClient()
 
 class CoursePurchase(BaseModel):
     """Course purchase request model."""
@@ -39,6 +40,7 @@ async def coursePurchase(course: CoursePurchase, userId: uuid.UUID = Depends(get
     try:
         logging.info(f"User {userId} is purchasing course: {course.courseName}")
         await dbClient.purchaseCourse(userId, course.courseName)
+        await notifyClient.notifyRegistration(userId, "CoursePurchase", CourseName=course.courseName)
         return {"message": f"Course '{course.courseName}' purchased successfully by user {userId}"}
 
     except Exception as e:

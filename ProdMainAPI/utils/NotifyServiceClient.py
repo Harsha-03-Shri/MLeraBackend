@@ -49,7 +49,7 @@ class NotifyServiceClient:
             logging.error(f"Failed to create user in Notify Service: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
     
-    async def notifyRegistration(self, userId, event, quizPercentage=None):
+    async def notifyRegistration(self, userId, event, quizPercentage=None,ModuleName=None,CourseName=None):
         """Send event-based notification to user.
         
         Args:
@@ -68,6 +68,10 @@ class NotifyServiceClient:
             
             if event == "ModuleCompletion":
                 payload["QuizPercentage"] = quizPercentage
+                payload["ModuleName"] = ModuleName
+                
+            elif event == "CourseCompletion":
+                payload["CourseName"] = CourseName
 
             response = await self.client.post("/notify/", json=payload)
             response.raise_for_status()

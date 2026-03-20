@@ -46,6 +46,9 @@ def formMessage(templateData: dict, UserData: dict):
 
         message = {"Subject": Subject, "Body": Body, "Email": UserData.get("Email")}
         return message
+    except KeyError as e:
+        logging.error(f"Error occurred while formatting message: Missing key {e} in UserData. Available keys: {list(UserData.keys())}")
+        return None
     except Exception as e:
         logging.error(f"Error occurred while formatting message: {e}")
         return None
