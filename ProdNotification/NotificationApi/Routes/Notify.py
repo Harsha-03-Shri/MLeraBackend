@@ -67,22 +67,18 @@ async def notify_user(notify: Notify, request: Request):
         user = User(request.app.state.db)
         UserData = user.getUser(userId)
 
-        if UserData is None:
-            logging.error(f"User {userId} not found in database.")
-            raise HTTPException(
-                status_code=404,
-                detail=f"User {userId} not found"
-            )
-
         if notify.TemplateType == "ModuleCompletion":
+
             if notify.QuizPercentage is None or notify.ModuleName is None:
-                logging.warning(f"QuizPercentage and ModuleName are required for TemplateType 'ModuleCompletion' for user {userId}.")
+                logging.warning(f"QuizPercentage is required for TemplateType 'ModuleCompletion' for user {userId}.")
                 raise HTTPException(
                     status_code=400,
-                    detail=f"QuizPercentage and ModuleName are required for TemplateType 'ModuleCompletion'"
+                    detail=f"QuizPercentage is required for TemplateType 'ModuleCompletion'"
                 )
+
             UserData['QuizPercentage'] = notify.QuizPercentage
             UserData['ModuleName'] = notify.ModuleName
+            
         elif notify.TemplateType == "CourseCompletion":
             if notify.CourseName is None:
                 logging.warning(f"CourseName is required for TemplateType 'CourseCompletion' for user {userId}.")
@@ -94,13 +90,6 @@ async def notify_user(notify: Notify, request: Request):
             
         template = Templates(request.app.state.db) 
         templateData = template.getTemplate(notify.TemplateType, "email")
-
-        if templateData is None:
-            logging.error(f"Template {notify.TemplateType} not found.")
-            raise HTTPException(
-                status_code=404,
-                detail=f"Template {notify.TemplateType} not found"
-            )
 
         message = formMessage(templateData, UserData)
 

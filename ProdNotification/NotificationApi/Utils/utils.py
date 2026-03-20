@@ -10,6 +10,10 @@ import uuid
 
 logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
+class SafeDict(dict):
+    def __missing__(self, key):
+        return "{" + key + "}"
+
 def formMessage(templateData: dict, UserData: dict):
     """Format notification message by combining template with user data.
     
@@ -35,24 +39,26 @@ def formMessage(templateData: dict, UserData: dict):
     """
     try:
         if templateData is None or UserData is None:
-            logging.warning("Template data or user data is None.")
-            return None
+            raise HTTPException(status_code=500, detail="Template/User data missing")
+
+        if not UserData.get("Email"):
+            raise HTTPException(status_code=400, detail="User email missing")
 
         Subject = templateData.get("Subject", "No Subject")
         Body = templateData.get("Body", "No Body")
 
-        Subject = Subject.format(**UserData)
-        Body = Body.format(**UserData)
+        Subject = Subject.format_map(SafeDict(UserData))
+        Body = Body.format_map(SafeDict(UserData))
 
-        message = {"Subject": Subject, "Body": Body, "Email": UserData.get("Email")}
-        return message
-    except KeyError as e:
-        logging.error(f"Error occurred while formatting message: Missing key {e} in UserData. Available keys: {list(UserData.keys())}")
-        return None
+        return {
+            "Subject": Subject,
+            "Body": Body,
+            "Email": UserData["Email"]
+        }
+
     except Exception as e:
-        logging.error(f"Error occurred while formatting message: {e}")
-        return None
-
+        logging.error(f"Error formatting message: {e}")
+        raise
 
 if __name__ == "__main__":
     pass
