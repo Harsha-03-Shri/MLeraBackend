@@ -11,6 +11,7 @@ ENV/
 
 # Environment
 .env
+.env.template
 *.pem
 private_key.pem
 
@@ -26,5 +27,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Lambda build artifacts
+lambda-layer/python/
+ProdDBSystem/Consumer/package/
+ProdNotification/Consumer/EmailConsumer/package/
+lambda-deployment.zip
 
 deployment.md

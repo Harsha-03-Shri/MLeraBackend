@@ -40,8 +40,8 @@ CREATE TABLE "UserCourse" (
 CREATE TABLE "UserModuleProgress" (
     "UserId" UUID,
     "ModuleId" UUID,
-    "Page" INTEGER,
-    "Completed" BOOLEAN,
+    "Page" TEXT,
+    "Completed" BOOLEAN DEFAULT FALSE,
     "CompletedOn" TIMESTAMP,
     PRIMARY KEY ("UserId","ModuleId"),
     FOREIGN KEY ("UserId") REFERENCES "User"("UserId") ON DELETE CASCADE,
