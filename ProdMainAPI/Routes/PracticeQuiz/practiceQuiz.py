@@ -19,7 +19,6 @@ dbClient = DBServiceClient()
 
 class QuizSubmission(BaseModel):
     """Quiz submission request model."""
-    userId: str
     moduleName: str
     score: int
 
