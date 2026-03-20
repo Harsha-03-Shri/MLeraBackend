@@ -159,7 +159,7 @@ Authorization: Bearer <jwt_token>
 
 **Endpoint:** `POST /course/purchase`
 
-**Description:** Enrolls authenticated user in a course, granting access to all modules.
+**Description:** Enrolls authenticated user in a course, granting access to all modules, and sends a course purchase notification email.
 
 **Authentication:** Required (JWT Bearer Token)
 
@@ -184,11 +184,13 @@ Authorization: Bearer <jwt_token>
 
 **What Happens:**
 1. Validates JWT token and extracts userId
-2. Sends purchase event to SQS queue
-3. Lambda consumer processes event asynchronously:
+2. Sends purchase event to DB API
+3. DB API processes event:
    - Looks up courseId from `Course` table
    - Inserts record into `UserCourse` table
-4. Caches purchase in Redis
+4. Sends notification request to Notification API with CourseName
+5. Notification API sends "CoursePurchase" email to user
+6. Caches purchase in Redis
 
 **Error Responses:**
 - `401`: Invalid or expired token
@@ -307,14 +309,13 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "ModuleName": "Introduction to Python",
-  "PageName": "Final Quiz",
   "QuizPercentage": 85.5
 }
 ```
 
 **Validation Rules:**
 - `QuizPercentage`: 0-100, required
-- Module only marked complete if score >= 70%
+- `ModuleName`: Required
 
 **Response:** `200 OK`
 ```json
@@ -325,16 +326,16 @@ Authorization: Bearer <jwt_token>
 
 **What Happens:**
 1. Validates JWT token and extracts userId
-2. Sends completion event to SQS queue
-3. Lambda consumer processes event:
+2. Sends completion event to DB API
+3. DB API processes event:
    - Looks up moduleId from `Module` table
    - Updates `UserModuleProgress`: `Completed` = true, `CompletedOn` = timestamp
-   - Inserts quiz record into `Quiz` table with score and pass/fail status
-4. Sends notification request to Notification API
+   - Inserts quiz record into `Quiz` table with score
+4. Sends notification request to Notification API with ModuleName and QuizPercentage
 5. Notification API:
    - Retrieves user data from DynamoDB
    - Fetches "ModuleCompletion" email template
-   - Formats message with user name and quiz score
+   - Formats message with user name, module name, and quiz score
    - Publishes to SNS → SQS → Lambda sends email
 
 **Error Responses:**
@@ -537,7 +538,17 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 {
   "userId": "123e4567-e89b-12d3-a456-426614174000",
   "TemplateType": "ModuleCompletion",
+  "ModuleName": "Introduction to Python",
   "QuizPercentage": 85
+}
+```
+
+**For Course Purchase:**
+```json
+{
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
+  "TemplateType": "CoursePurchase",
+  "CourseName": "Python Fundamentals"
 }
 ```
 
@@ -550,20 +561,25 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 **What Happens:**
 1. Retrieves user data from DynamoDB `Users` table
-2. Fetches email template from DynamoDB `Templates` table
-3. Formats message by replacing placeholders:
+2. Validates required fields based on TemplateType:
+   - ModuleCompletion: Requires `ModuleName` and `QuizPercentage`
+   - CoursePurchase: Requires `CourseName`
+3. Fetches email template from DynamoDB `Templates` table
+4. Formats message by replacing placeholders:
    - `{Name}` → User's name
-   - `{QuizPercentage}` → Quiz score (if applicable)
-4. Publishes message to SNS topic with channel filter
-5. SNS routes to appropriate SQS queue (email, apn, fcm)
-6. Lambda consumer processes queue:
+   - `{ModuleName}` → Module name (for ModuleCompletion)
+   - `{QuizPercentage}` → Quiz score (for ModuleCompletion)
+   - `{CourseName}` → Course name (for CoursePurchase)
+5. Publishes message to SNS topic with channel filter
+6. SNS routes to appropriate SQS queue (email, apn, fcm)
+7. Lambda consumer processes queue:
    - Email Lambda sends via Gmail SMTP
    - Other channels handled by respective consumers
 
 **Error Responses:**
-- `400`: Missing required fields (e.g., QuizPercentage for ModuleCompletion)
+- `400`: Missing required fields (e.g., QuizPercentage and ModuleName for ModuleCompletion, CourseName for CoursePurchase)
 - `404`: User or template not found
-- `500`: SNS publish error
+- `500`: SNS publish error or message formatting failure
 
 ---
 
@@ -678,11 +694,24 @@ Client → Main API → DB API → SQS Queue
 
 ### Module Completion Flow
 ```
-Client → Main API → DB API → SQS Queue
-                              ↓
-                         Lambda Consumer → PostgreSQL
-                              ↓
-                    Notification API → SNS → SQS → Lambda → Email
+Client → Main API → DB API → PostgreSQL
+                  ↓
+            Notification API (ModuleName, QuizPercentage)
+                  ↓
+            DynamoDB (User + Template)
+                  ↓
+                 SNS → SQS → Lambda → Email
+```
+
+### Course Purchase Flow
+```
+Client → Main API → DB API → PostgreSQL
+                  ↓
+            Notification API (CourseName)
+                  ↓
+            DynamoDB (User + Template)
+                  ↓
+                 SNS → SQS → Lambda → Email
 ```
 
 ---
