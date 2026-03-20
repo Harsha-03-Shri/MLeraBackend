@@ -170,7 +170,7 @@ class DBServiceClient:
             payload = {
                 "userId": str(userId),
                 "moduleName": moduleName,
-                "Score": score
+                "score": score
             }
             response = await self.client.post("/practiceQuiz/submit", json=payload)
             response.raise_for_status()
