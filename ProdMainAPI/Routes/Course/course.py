@@ -9,11 +9,13 @@ import logging
 from pydantic import BaseModel
 import uuid
 from utils.DBServiceClient import DBServiceClient
+from utils.NotifyServiceClient import NotifyServiceClient
 from utils.Auth import getCurrentUser
 
 logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 router = APIRouter(prefix="/course", tags=["Course"])
+
 dbClient = DBServiceClient()
 notifyClient = NotifyServiceClient()
 
