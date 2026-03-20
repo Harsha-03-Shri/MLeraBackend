@@ -23,6 +23,7 @@ class ModuleCompletion(BaseModel):
     moduleName: str
     QuizPercentage: float = Field(default=None, ge=0, le=100)
 
+
 @router.get("/resume/{userId}/{moduleName}")
 async def resumeModule(userId: str, moduleName: str, request: Request):
     """
@@ -47,32 +48,45 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
     """
     try:
         redis = await request.app.state.redis_instance.getRedisconnection()
-        sqs = request.app.state.sqs_instance
         
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
+
         if cachedData:
             data = json.loads(cachedData)
             if data.get("moduleName") == moduleName:
                 logging.info(f"Cache hit resume module")
                 return data
 
-        data = {
-            "userId": userId,
-            "moduleName": moduleName
-        }
-        message = {
-            "eventType": "resumeModule",
-            "data": data
-        }
+        conn = request.app.state.db_instance.getDBconnection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = %s', (moduleName,))
+        moduleId = cursor.fetchone()
 
-        progress = await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
+        if not moduleId:
+            logging.warning("Module not found for name: %s", moduleName)
+            cursor.close()
+            raise HTTPException(
+                status_code=404,
+                detail="Module not found"
+            )
+
+        cursor.execute('SELECT "Page" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
+        progress = cursor.fetchone()
+        cursor.close()  
 
         if progress is None:
             raise HTTPException(
                 status_code=404,
                 detail="Module progress not found"
             )
+        
+        progress = {
+            "userId": userId,
+            "moduleName": moduleName,
+            "LastPage": progress[0]
+        }
 
+        logging.info(f"Cache miss resume module, fetched from DB: {progress}")
         await redis.hset(f"user:{userId}", "resumeModule", json.dumps(progress))
         return progress
 
@@ -206,3 +220,4 @@ async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
             status_code=500,
             detail="Internal error while processing module completion"
         )
+

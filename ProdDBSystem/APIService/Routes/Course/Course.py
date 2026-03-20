@@ -85,32 +85,45 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
     """
     try:
         redis = await request.app.state.redis_instance.getRedisconnection()
-        sqs = request.app.state.sqs_instance
         
         cachedData = await redis.hget(f"user:{userId}", "courseProgress")
         if cachedData:
             data = json.loads(cachedData)
             if data.get("courseName") == courseName:
+                logging.info(f"Cache hit for course progress: {data}")
                 return data
 
-        data = {
-            "userId": userId,
-            "courseName": courseName
-        }
-        message = {
-            "eventType": "courseProgress",
-            "data": data
-        }
+        conn = request.app.state.db_instance.getDBconnection()
+        cursor = conn.cursor()
 
-        progress = await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
-        if progress:
-            await redis.hset(f"user:{userId}", "courseProgress", json.dumps(progress))
-            return progress
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail="Course progress not found"
-            )
+        cursor.execute('SELECT "CourseId" FROM "Course" WHERE "CourseName" = %s', (courseName,))
+        courseId = cursor.fetchone()    
+        if not courseId:
+            logging.warning("Course not found for name: %s", courseName)
+            cursor.close()
+            return
+
+        cursor.execute('SELECT COUNT(*) FROM "Module" WHERE "CourseId" = %s', (courseId[0],))
+        totalModules = cursor.fetchone()[0]
+
+        cursor.execute('SELECT "Completed" FROM "UserModuleProgress" WHERE "UserId" = %s', (userId,))
+        progress = cursor.fetchall()
+        cursor.close()
+
+        inprogress = 0
+        completed = 0
+        for row in progress:
+            if not row[0]:
+                inprogress += 1
+            else:
+                completed += 1
+
+        logging.info("Fetched course progress for user: %s, course: %s", userId, courseName)
+        return {
+            "totalModules": totalModules,
+            "inProgress": inprogress,
+            "completed": completed
+        }
 
     except Exception as e:
         logging.error(f"Error while fetching course progress: {e}")
@@ -118,3 +131,9 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
             status_code=500,
             detail="Internal error while fetching course progress"
         )
+
+
+
+
+
+
