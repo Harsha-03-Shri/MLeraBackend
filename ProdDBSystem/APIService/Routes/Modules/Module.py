@@ -29,15 +29,11 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
     """
     Retrieve the last saved progress for a user's module.
 
-    Checks Redis cache first; on miss, sends a resumeModule event to SQS.
-    Caches the result in Redis before returning.
+    Checks Redis cache first; on miss, queries the database directly.
 
     Args:
         userId: The unique identifier of the user.
         moduleName: The name of the module to resume.
-        conn: Database connection dependency.
-        redis: Redis connection dependency.
-        sqs: SQS client dependency.
 
     Returns:
         The module progress data for the given user and module.
@@ -80,15 +76,15 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
                 detail="Module progress not found"
             )
         
-        progress = {
+        progressData = {
             "userId": userId,
             "moduleName": moduleName,
-            "LastPage": progress[0]
+            "LastPage": progress[0] if progress else None
         }
 
-        logging.info(f"Cache miss resume module, fetched from DB: {progress}")
-        await redis.hset(f"user:{userId}", "resumeModule", json.dumps(progress))
-        return progress
+        logging.info(f"Cache miss resume module, fetched from DB: {progressData}")
+        await redis.hset(f"user:{userId}", "resumeModule", json.dumps(progressData))
+        return progressData
 
     except Exception as e:
         logging.error(f"Error while fetching module resume data: {e}")
@@ -149,8 +145,8 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
 
         if cachedData:
-            data = json.loads(cachedData)
-            if data.get("moduleName") == moduleName:
+            cachedDataDict = json.loads(cachedData)
+            if cachedDataDict.get("moduleName") == moduleName:
                 await redis.hdel(f"user:{userId}", "resumeModule")  
         
         await redis.hset(f"user:{userId}", "resumeModule", json.dumps(data))

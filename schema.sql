@@ -64,7 +64,7 @@ CREATE TABLE "PracticeQuiz" (
     "ModuleId" UUID,
     "HighestScore" INTEGER,
     "LowestScore" INTEGER,
-    "Attempts" INTEGER,
+    "Attempts" INTEGER DEFAULT 0,
     PRIMARY KEY ("UserId","ModuleId"),
     FOREIGN KEY ("UserId") REFERENCES "User"("UserId") ON DELETE CASCADE,
     FOREIGN KEY ("ModuleId") REFERENCES "Module"("ModuleId") ON DELETE CASCADE

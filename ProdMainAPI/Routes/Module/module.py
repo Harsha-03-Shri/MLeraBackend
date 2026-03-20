@@ -24,7 +24,11 @@ class ModuleProgress(BaseModel):
     """Module progress update request model."""
     ModuleName: str
     PageName: str
-    QuizPercentage: Optional[float] = Field(default=None, ge=0, le=100)
+
+class ModuleCompletion(BaseModel):
+    """Module completion request model."""
+    ModuleName: str
+    QuizPercentage: float = Field(ge=0, le=100)
 
 @router.post("/update") 
 async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depends(getCurrentUser)):
@@ -53,7 +57,7 @@ async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depen
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/complete")
-async def completeModule(module: ModuleProgress, userId: uuid.UUID = Depends(getCurrentUser)):
+async def completeModule(module: ModuleCompletion, userId: uuid.UUID = Depends(getCurrentUser)):
     """Mark a module as completed with quiz score.
     
     Records module completion, stores quiz score, and triggers a
