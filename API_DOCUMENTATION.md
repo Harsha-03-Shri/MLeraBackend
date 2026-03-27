@@ -153,9 +153,56 @@ Authorization: Bearer <jwt_token>
 
 ---
 
+### 4. Delete User Account
+
+**Endpoint:** `POST /user/delete`
+
+**Description:** Permanently deletes authenticated user's account and all associated data, then sends a confirmation email.
+
+**Authentication:** Required (JWT Bearer Token)
+
+**Request Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Account deleted successfully"
+}
+```
+
+**What Happens:**
+1. Validates JWT token and extracts userId
+2. Sends delete event to DB API
+3. DB API sends event to SQS queue and clears Redis cache
+4. Lambda consumer processes event:
+   - Deletes user from `User` table
+   - CASCADE automatically deletes from:
+     - `Auth` (login credentials)
+     - `UserCourse` (course enrollments)
+     - `UserModuleProgress` (module progress)
+     - `Quiz` (quiz attempts)
+     - `PracticeQuiz` (practice quiz statistics)
+5. Sends notification request to Notification API
+6. Notification API:
+   - Retrieves user data from DynamoDB
+   - Fetches "AccountDeletion" email template
+   - Formats confirmation message
+   - Publishes to SNS → SQS → Lambda sends email
+
+**Error Responses:**
+- `401`: Invalid or expired token
+- `500`: Internal server error
+
+**Note:** This action is irreversible. All user data will be permanently deleted.
+
+---
+
 ## Course Management
 
-### 4. Purchase Course
+### 5. Purchase Course
 
 **Endpoint:** `POST /course/purchase`
 
@@ -199,7 +246,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 5. Get Course Progress
+### 6. Get Course Progress
 
 **Endpoint:** `GET /course/progress?courseName=<course_name>`
 
@@ -248,7 +295,7 @@ GET /course/progress?courseName=Python%20Fundamentals
 
 ## Module Management
 
-### 6. Update Module Progress
+### 7. Update Module Progress
 
 **Endpoint:** `POST /module/update`
 
@@ -292,7 +339,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 7. Complete Module
+### 8. Complete Module
 
 **Endpoint:** `POST /module/complete`
 
@@ -345,7 +392,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 8. Resume Module
+### 9. Resume Module
 
 **Endpoint:** `GET /module/resume?moduleName=<module_name>`
 
@@ -389,7 +436,7 @@ GET /module/resume?moduleName=Introduction%20to%20Python
 
 ## Practice Quiz
 
-### 9. Submit Practice Quiz
+### 10. Submit Practice Quiz
 
 **Endpoint:** `POST /practicequiz/submit`
 
@@ -435,7 +482,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 10. Get Practice Quiz Report
+### 11. Get Practice Quiz Report
 
 **Endpoint:** `GET /practicequiz/report?moduleName=<module_name>`
 
@@ -481,7 +528,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ## Notifications
 
-### 11. Create User in Notification System
+### 12. Create User in Notification System
 
 **Endpoint:** `POST /api/v1/user/create`
 
@@ -515,7 +562,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 12. Send Notification
+### 13. Send Notification
 
 **Endpoint:** `POST /notify/`
 
@@ -552,6 +599,14 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 }
 ```
 
+**For Account Deletion:**
+```json
+{
+  "userId": "123e4567-e89b-12d3-a456-426614174000",
+  "TemplateType": "AccountDeletion"
+}
+```
+
 **Response:** `200 OK`
 ```json
 {
@@ -564,6 +619,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 2. Validates required fields based on TemplateType:
    - ModuleCompletion: Requires `ModuleName` and `QuizPercentage`
    - CoursePurchase: Requires `CourseName`
+   - AccountDeletion: No additional fields required
 3. Fetches email template from DynamoDB `Templates` table
 4. Formats message by replacing placeholders:
    - `{Name}` → User's name
@@ -585,7 +641,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ## Health Checks
 
-### 13. Nginx Health Check
+### 14. Nginx Health Check
 
 **Endpoint:** `GET /health`
 
@@ -602,7 +658,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 14. Main API Health Check
+### 15. Main API Health Check
 
 **Endpoint:** `GET /health` (on Main API container)
 
@@ -619,7 +675,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 15. DB API Health Check
+### 16. DB API Health Check
 
 **Endpoint:** `GET /health` (on DB API container)
 
@@ -636,7 +692,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 16. Notification API Health Check
+### 17. Notification API Health Check
 
 **Endpoint:** `GET /health` (on Notification API container)
 
@@ -712,6 +768,21 @@ Client → Main API → DB API → PostgreSQL
             DynamoDB (User + Template)
                   ↓
                  SNS → SQS → Lambda → Email
+```
+
+### Account Deletion Flow
+```
+Client → Main API → DB API → SQS Queue
+                              ↓
+                         Lambda Consumer → PostgreSQL (CASCADE DELETE)
+                              ↓
+                         Clears Redis Cache
+                              ↓
+                    Notification API (AccountDeletion)
+                              ↓
+                    DynamoDB (User + Template)
+                              ↓
+                         SNS → SQS → Lambda → Email
 ```
 
 ---
