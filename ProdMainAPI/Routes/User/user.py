@@ -4,7 +4,7 @@ This module handles user registration, authentication, and profile management.
 Provides endpoints for user signup, login, and profile retrieval.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException ,Response
 import logging 
 from pydantic import BaseModel, Field, SecretStr
 import uuid
@@ -34,7 +34,7 @@ class UserLogin(BaseModel):
 
 
 @router.post("/register")
-async def register(user: UserRegister):
+async def register(response:Response,user: UserRegister):
     """Register a new user account.
     
     Creates a new user in the database, sets up notification preferences,
@@ -55,7 +55,10 @@ async def register(user: UserRegister):
         userId = await dbClient.registerUser(user.Name, user.Phone, user.Email, user.Password.get_secret_value(),user.Profession)
         await notifyClient.createUser(userId, user.Name, user.Email)
         await notifyClient.notifyRegistration(userId, "Registration")
+        token = createAccessToken(uuid.UUID(userId))
         
+        response.set_cookie("access_token", token, httponly=True)
+
         return {"message": "User registered successfully"}
 
     except Exception as e:
@@ -63,7 +66,7 @@ async def register(user: UserRegister):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/login")
-async def login(user: UserLogin):
+async def login(response:Response,user: UserLogin):
     """Authenticate user and generate access token.
     
     Validates user credentials and returns a JWT token for subsequent requests.
@@ -81,7 +84,8 @@ async def login(user: UserLogin):
         logging.info(f"Logging in user with email: {user.Email}")
         userId = await dbClient.loginUser(user.Email, user.Password.get_secret_value())
         token = createAccessToken(uuid.UUID(userId))
-        return {"token": token}
+        response.set_cookie("access_token", token, httponly=True)
+        return {"message": "Login successful"}
 
     except Exception as e:
         logging.error(f"Error logging in user: {str(e)}")

@@ -76,7 +76,6 @@ def purchaseCourse(data):
             logging.warning("Course not found for name: %s", courseName)
             cursor.close()
             return
-
         cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s)', (userId, courseId[0]))
         conn.commit()
         cursor.close()

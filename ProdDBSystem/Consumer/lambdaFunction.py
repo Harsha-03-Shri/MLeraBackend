@@ -6,15 +6,13 @@ message body, and dispatches to the appropriate handler in Event.py.
 
 import json
 import logging
-from Event import submitPracticeQuiz, purchaseCourse, courseProgress, resumeModule, updateModule, completeModule, deleteAccount
+from Event import submitPracticeQuiz, purchaseCourse, updateModule, completeModule, deleteAccount
 
 logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %(message)s")
 
 EVENT_HANDLERS = {
     "submitPracticeQuiz": submitPracticeQuiz,
     "purchaseCourse": purchaseCourse,
-    "courseProgress": courseProgress,
-    "resumeModule": resumeModule,
     "updateModule": updateModule,
     "completeModule": completeModule,
     "deleteAccount": deleteAccount,
