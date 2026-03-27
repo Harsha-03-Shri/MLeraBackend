@@ -92,7 +92,9 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
             status_code=500,
             detail="Internal error while fetching module resume data"
         )
-
+    finally:
+        if conn:
+            request.app.state.db_instance.releaseDBconnection(conn)
 @router.post("/update")
 async def updateModule(moduleProgress: ModuleProgress, request: Request):
     """

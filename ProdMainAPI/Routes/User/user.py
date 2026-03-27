@@ -59,7 +59,7 @@ async def register(response:Response,user: UserRegister):
         
         response.set_cookie("access_token", token, httponly=True)
 
-        return {"message": "User registered successfully"}
+        return {"message": "User registered successfully","token":token}
 
     except Exception as e:
         logging.error(f"Error registering user: {str(e)}")
@@ -84,8 +84,9 @@ async def login(response:Response,user: UserLogin):
         logging.info(f"Logging in user with email: {user.Email}")
         userId = await dbClient.loginUser(user.Email, user.Password.get_secret_value())
         token = createAccessToken(uuid.UUID(userId))
+
         response.set_cookie("access_token", token, httponly=True)
-        return {"message": "Login successful"}
+        return {"message": "Login successful","token":token}
 
     except Exception as e:
         logging.error(f"Error logging in user: {str(e)}")
