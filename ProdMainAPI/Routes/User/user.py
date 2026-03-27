@@ -110,3 +110,29 @@ async def getProfile(userId: uuid.UUID = Depends(getCurrentUser)):
     except Exception as e:
         logging.error(f"Error fetching user profile: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.post("/delete")
+async def deleteAccount(userId: uuid.UUID = Depends(getCurrentUser)):
+    """Delete user account.
+
+    Removes user from database and sends cancellation notification.
+
+    Args:
+        userId: Authenticated user ID from JWT token
+
+    Returns:
+        dict: Success message
+
+    Raises:
+        HTTPException: If deletion fails
+    """
+    try:
+        logging.info(f"Deleting account for user: {userId}")
+        await dbClient.deleteUser(userId)
+        await notifyClient.notifyRegistration(userId, "AccountDeletion")
+
+        return {"message": "Account deleted successfully"}
+
+    except Exception as e:
+        logging.error(f"Error deleting user account: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")

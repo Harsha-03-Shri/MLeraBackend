@@ -179,3 +179,46 @@ def completeModule(data):
     finally:
         if conn:
             db.releaseDBconnection(conn)
+
+def deleteAccount(data):
+    """Delete a user account and all associated data.
+    
+    Due to ON DELETE CASCADE constraints, this will automatically delete:
+    - Auth credentials
+    - UserCourse enrollments
+    - UserModuleProgress records
+    - Quiz attempts
+    - PracticeQuiz statistics
+
+    Args:
+        data: Dict containing userId.
+    """
+    conn = None
+    try:
+        userId = data.get("userId")
+        
+        if not userId:
+            logging.warning("Missing userId in data: %s", json.dumps(data))
+            return
+        
+        conn = db.getDBconnection()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM "User" WHERE "UserId" = %s', (userId,))
+        
+        if cursor.rowcount == 0:
+            logging.warning("User not found for userId: %s", userId)
+            cursor.close()
+            return
+        
+        conn.commit()
+        cursor.close()
+        logging.info("Deleted account for user: %s (cascade deleted all related data)", userId)
+
+    except Exception as e:
+        logging.error(f"Error while deleting account: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            db.releaseDBconnection(conn)

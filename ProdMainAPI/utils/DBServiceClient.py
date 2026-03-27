@@ -273,3 +273,22 @@ class DBServiceClient:
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch module progress: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+
+    async def deleteUser(self, userId):
+        """Remove user account from database.
+
+        Args:
+            userId: User's unique identifier
+
+        Raises:
+            HTTPException: If deletion fails
+        """
+        try:
+            payload = {"userId": str(userId)}
+            response = await self.client.post(f"/user/delete/{userId}", json=payload)
+            response.raise_for_status()
+
+        except httpx.HTTPStatusError as exc:
+            logging.error(f"Failed to delete user: {exc.response.text}")
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+ 

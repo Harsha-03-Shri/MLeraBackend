@@ -75,6 +75,7 @@ async def userRegistration(user: User, request: Request):
         finally:
             cursor.close()
 
+
         return {"message": "User registered successfully", "userId": str(userId)}
 
     except HTTPException:
@@ -203,3 +204,49 @@ async def userProfile(userId: str, request: Request):
     finally:
         if conn:
             request.app.state.db_instance.releaseDBconnection(conn)
+
+@router.post("/delete/{userId}")
+async def deleteAccount(userId: str, request: Request):
+    """Delete a user account by their ID.
+
+    Sends delete event to SQS for async processing. The Lambda consumer
+    will delete the user and all related data via CASCADE constraints.
+
+    Args:
+        userId: The unique identifier of the user to delete.
+        request: FastAPI request object.
+
+    Returns:
+        A confirmation message.
+
+    Raises:
+        HTTPException 400: If userId is invalid.
+        HTTPException 500: On SQS or internal errors.
+    """
+    try:
+        redis = await request.app.state.redis_instance.getRedisconnection()
+        sqs = request.app.state.sqs_instance
+        
+        if userId is None:
+            raise HTTPException(status_code=400, detail="Invalid userId: None")
+        
+        data = {
+            "userId": str(userId)
+        }
+        message = {
+            "eventType": "deleteAccount",
+            "data": data
+        }
+        
+        await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
+        await redis.delete(f"user:{userId}")
+        
+        logging.info(f"Delete account event sent to SQS for user: {userId}")
+        return {"message": "Account deletion initiated successfully"}
+        
+    except Exception as e:
+        logging.error(f"Error while deleting user: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal error while deleting user"
+        )
