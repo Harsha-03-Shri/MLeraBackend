@@ -2,7 +2,7 @@ name: Build and Deploy to EC2
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master,Test]
     paths:
       - 'ProdMainAPI/**'
       - 'ProdDBSystem/**'

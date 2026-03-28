@@ -291,4 +291,66 @@ class DBServiceClient:
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to delete user: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
- 
+
+    async def getInProgressModules(self,userId):
+        """Retrieve list of modules that user is currently studying.
+
+        Args:
+            userId: User's unique identifier
+
+        Returns:
+            list: List of module names in progress
+
+        Raises:
+            HTTPException: If fetch fails
+        """
+        try:
+            response = await self.client.get(f"/module/inProgress/{userId}")
+            response.raise_for_status()
+            return response.json()
+
+        except httpx.HTTPStatusError as exc:
+            logging.error(f"Failed to fetch in-progress modules: {exc.response.text}")
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+
+    async def getEnrolledCourses(self, userId):
+        """Fetch list of courses a user is enrolled in.
+
+        Args:
+            userId: User's unique identifier
+
+        Returns:
+            list: List of enrolled course names
+
+        Raises:
+            HTTPException: If fetch fails
+        """
+        try:
+            response = await self.client.get(f"/user/enrolledCourses/{userId}")
+            response.raise_for_status()
+            return response.json()
+
+        except httpx.HTTPStatusError as exc:
+            logging.error(f"Failed to fetch enrolled courses: {exc.response.text}")
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+
+    async def getCompletedModules(self, userId):
+        """Retrieve list of modules user has completed.
+
+        Args:
+            userId: User's unique identifier
+
+        Returns:
+            list: List of completed module names
+
+        Raises:
+            HTTPException: If fetch fails
+        """
+        try:
+            response = await self.client.get(f"/module/completed/{userId}")
+            response.raise_for_status()
+            return response.json()
+
+        except httpx.HTTPStatusError as exc:
+            logging.error(f"Failed to fetch completed modules: {exc.response.text}")
+            raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)

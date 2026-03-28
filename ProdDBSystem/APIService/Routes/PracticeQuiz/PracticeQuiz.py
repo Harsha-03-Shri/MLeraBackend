@@ -40,6 +40,7 @@ async def submitPracticeQuiz(submitData: Submit, request: Request):
         HTTPException 500: On internal errors.
     """
     try:
+        logging.info(f"Processing practice quiz submission - userId: {submitData.userId}, moduleName: {submitData.moduleName}, score: {submitData.score}")
         redis = await request.app.state.redis_instance.getRedisconnection()
         sqs = request.app.state.sqs_instance
         
@@ -53,19 +54,26 @@ async def submitPracticeQuiz(submitData: Submit, request: Request):
             "data": data
         }
         await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
+        logging.info(f"Practice quiz submission event sent to SQS - userId: {submitData.userId}, moduleName: {submitData.moduleName}, score: {submitData.score}")
 
         cachedData = await redis.hget(f"user:{submitData.userId}", "practiceQuizReport")
         if cachedData:
             data = json.loads(cachedData)
+            oldHighest = data["HighestScore"]
+            oldLowest = data["LowestScore"]
             data["HighestScore"] = max(data["HighestScore"], submitData.score)
             data["LowestScore"] = min(data["LowestScore"], submitData.score)
             data["Attempts"] += 1
             await redis.hset(f"user:{submitData.userId}", "practiceQuizReport", json.dumps(data))
+            logging.info(f"Practice quiz cache updated - userId: {submitData.userId}, attempts: {data['Attempts']}, highest: {oldHighest}->{data['HighestScore']}, lowest: {oldLowest}->{data['LowestScore']}")
+        else:
+            logging.info(f"No cached practice quiz report found - userId: {submitData.userId}")
 
+        logging.info(f"Practice quiz submission completed successfully - userId: {submitData.userId}, moduleName: {submitData.moduleName}")
         return {"message": "Practice quiz submission queued successfully"}
 
     except Exception as e:
-        logging.error(f"Error while submitting practice quiz result: {e}")
+        logging.error(f"Error while submitting practice quiz result - userId: {submitData.userId}, moduleName: {submitData.moduleName}, error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Internal error while submitting practice quiz result"
@@ -93,18 +101,23 @@ async def getPracticeQuizReport(userId: str, moduleName: str, request: Request):
     """
     conn = None
     try:
+        logging.info(f"Fetching practice quiz report - userId: {userId}, moduleName: {moduleName}")
         redis = await request.app.state.redis_instance.getRedisconnection()
         
         cachedData = await redis.hget(f"user:{userId}", "practiceQuizReport")
         if cachedData:
-            return json.loads(cachedData)
+            reportData = json.loads(cachedData)
+            logging.info(f"Cache hit for practice quiz report - userId: {userId}, moduleName: {moduleName}, attempts: {reportData.get('Attempts')}")
+            return reportData
 
+        logging.info(f"Cache miss for practice quiz report, querying database - userId: {userId}, moduleName: {moduleName}")
         conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
         cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = %s', (moduleName,))
         moduleId = cursor.fetchone()
         if not moduleId:
             cursor.close()
+            logging.warning(f"Module not found - moduleName: {moduleName}")
             raise HTTPException(
                 status_code=404,
                 detail="Module not found"
@@ -115,6 +128,7 @@ async def getPracticeQuizReport(userId: str, moduleName: str, request: Request):
         cursor.close()
 
         if not report:
+            logging.warning(f"No quiz attempts found - userId: {userId}, moduleName: {moduleName}")
             raise HTTPException(
                 status_code=404,
                 detail="No quiz attempts found for this module"
@@ -127,12 +141,13 @@ async def getPracticeQuizReport(userId: str, moduleName: str, request: Request):
         }
 
         await redis.hset(f"user:{userId}", "practiceQuizReport", json.dumps(reportData))
+        logging.info(f"Practice quiz report fetched from DB and cached - userId: {userId}, moduleName: {moduleName}, attempts: {reportData['Attempts']}, highest: {reportData['HighestScore']}, lowest: {reportData['LowestScore']}")
         return reportData
 
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error while fetching practice quiz report: {e}")
+        logging.error(f"Error while fetching practice quiz report - userId: {userId}, moduleName: {moduleName}, error: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Internal error while fetching practice quiz report"

@@ -74,3 +74,28 @@ async def getCourseProgress(courseName: str, userId: uuid.UUID = Depends(getCurr
     except Exception as e:
         logging.error(f"Error fetching course progress: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+        
+
+@router.get("/enrolled")
+async def getEnrolledCourses(userId: uuid.UUID = Depends(getCurrentUser)):
+    """Get all courses that are currently enrolled by the user.
+
+    Returns a list of courses where the user has purchased access.
+
+    Args:
+        userId: Authenticated user ID from JWT token
+
+    Returns:
+        dict: List of enrolled course names
+
+    Raises:
+        HTTPException: If enrolled courses fetch fails
+    """
+    try:
+        logging.info(f"Fetching enrolled courses for user: {userId}")
+        courses = await dbClient.getEnrolledCourses(userId)
+        return {"courses": courses}
+
+    except Exception as e:
+        logging.error(f"Error fetching enrolled courses: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
