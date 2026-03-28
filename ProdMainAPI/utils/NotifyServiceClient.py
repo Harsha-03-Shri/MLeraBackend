@@ -54,8 +54,10 @@ class NotifyServiceClient:
         
         Args:
             userId: User's unique identifier
-            event: Type of event (e.g., 'Registration', 'ModuleCompletion')
+            event: Type of event (e.g., 'Registration', 'ModuleCompletion', 'CoursePurchase')
             quizPercentage: Optional quiz score for module completion events
+            ModuleName: Optional module name for module completion events
+            CourseName: Optional course name for course purchase events
             
         Raises:
             HTTPException: If notification sending fails
@@ -70,7 +72,7 @@ class NotifyServiceClient:
                 payload["QuizPercentage"] = quizPercentage
                 payload["ModuleName"] = ModuleName
                 
-            elif event == "CourseCompletion":
+            elif event == "CoursePurchase":
                 payload["CourseName"] = CourseName
 
             response = await self.client.post("/notify/", json=payload)
