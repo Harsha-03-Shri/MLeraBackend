@@ -229,6 +229,7 @@ async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
         logging.info(f"Module completion event sent to SQS - userId: {userId}, moduleName: {moduleName}, quizPercentage: {QuizPercentage}")
         
         await redis.hdel(f"user:{userId}", "inProgressModules")
+        await redis.hdel(f"user:{userId}", "completedModules")
         logging.info(f"Cleared in-progress modules cache - userId: {userId}")
 
         logging.info(f"Module completion processed successfully - userId: {userId}, moduleName: {moduleName}")
@@ -276,15 +277,20 @@ async def getInProgressModules(userId: str, request: Request):
         logging.info(f"Cache miss for in-progress modules, querying database - userId: {userId}")
         conn = request.app.state.db_instance.getDBconnection()
         cursor = conn.cursor()
-        cursor.execute("""
+        
+       
+        query = """
             SELECT m."ModuleName",c."CourseName",p."Page"
             FROM "Module" m
             JOIN "UserModuleProgress" p ON m."ModuleId" = p."ModuleId"
             LEFT JOIN "Course" c ON c."CourseId" = m."CourseId"
             WHERE p."UserId" = %s AND p."Completed" = FALSE
-        """, (userId,))
+        """
+        logging.info(f"Executing query with userId: {userId}, type: {type(userId)}")
+        cursor.execute(query, (userId,))
 
         modules = cursor.fetchall()
+        logging.info(f"Query returned {len(modules)} rows - userId: {userId}")
         cursor.close()
         
         moduleNames = [module[0] for module in modules]

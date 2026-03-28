@@ -293,9 +293,46 @@ GET /course/progress?courseName=Python%20Fundamentals
 
 ---
 
+### 7. Get Enrolled Courses
+
+**Endpoint:** `GET /course/enrolled`
+
+**Description:** Retrieves list of all courses the authenticated user has enrolled in.
+
+**Authentication:** Required (JWT Bearer Token)
+
+**Request Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "courses": [
+    "Python Fundamentals",
+    "Advanced JavaScript",
+    "Data Structures"
+  ]
+}
+```
+
+**What Happens:**
+1. Validates JWT token and extracts userId
+2. Checks Redis cache for enrolled courses
+3. If cache miss, queries DB API
+4. DB API joins `UserCourse` and `Course` tables to get course names
+5. Caches result in Redis for faster subsequent requests
+
+**Error Responses:**
+- `401`: Invalid or expired token
+- `500`: Internal server error
+
+---
+
 ## Module Management
 
-### 7. Update Module Progress
+### 8. Update Module Progress
 
 **Endpoint:** `POST /module/update`
 
@@ -339,7 +376,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 8. Complete Module
+### 9. Complete Module
 
 **Endpoint:** `POST /module/complete`
 
@@ -392,7 +429,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 9. Resume Module
+### 10. Resume Module
 
 **Endpoint:** `GET /module/resume?moduleName=<module_name>`
 
@@ -434,9 +471,103 @@ GET /module/resume?moduleName=Introduction%20to%20Python
 
 ---
 
+### 11. Get In-Progress Modules
+
+**Endpoint:** `GET /module/inProgress`
+
+**Description:** Retrieves all modules the authenticated user is currently studying (started but not completed).
+
+**Authentication:** Required (JWT Bearer Token)
+
+**Request Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "modules": [
+    "Introduction to Python",
+    "Variables and Data Types",
+    "Control Flow"
+  ],
+  "courseNames": [
+    "Python Fundamentals",
+    "Python Fundamentals",
+    "Python Fundamentals"
+  ],
+  "lastPages": [
+    "Functions",
+    "Lists",
+    "If Statements"
+  ]
+}
+```
+
+**What Happens:**
+1. Validates JWT token and extracts userId
+2. Checks Redis cache for in-progress modules
+3. If cache miss, queries DB API
+4. DB API joins `Module`, `UserModuleProgress`, and `Course` tables
+5. Filters for modules where `Completed` = FALSE
+6. Returns module names, associated course names, and last accessed pages
+7. Caches result in Redis
+
+**Error Responses:**
+- `401`: Invalid or expired token
+- `500`: Internal server error
+
+---
+
+### 12. Get Completed Modules
+
+**Endpoint:** `GET /module/completed`
+
+**Description:** Retrieves the 3 most recently completed modules for the authenticated user.
+
+**Authentication:** Required (JWT Bearer Token)
+
+**Request Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "modules": [
+    "Introduction to Python",
+    "Variables and Data Types",
+    "Functions"
+  ],
+  "completionTimes": [
+    "2024-01-15T10:30:00",
+    "2024-01-14T15:45:00",
+    "2024-01-13T09:20:00"
+  ]
+}
+```
+
+**What Happens:**
+1. Validates JWT token and extracts userId
+2. Checks Redis cache for completed modules
+3. If cache miss, queries DB API
+4. DB API joins `Module` and `UserModuleProgress` tables
+5. Filters for modules where `Completed` = TRUE
+6. Orders by `CompletedOn` DESC and limits to 3 most recent
+7. Returns module names and completion timestamps in ISO format
+8. Caches result in Redis
+
+**Error Responses:**
+- `401`: Invalid or expired token
+- `500`: Internal server error
+
+---
+
 ## Practice Quiz
 
-### 10. Submit Practice Quiz
+### 13. Submit Practice Quiz
 
 **Endpoint:** `POST /practicequiz/submit`
 
@@ -482,7 +613,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-### 11. Get Practice Quiz Report
+### 14. Get Practice Quiz Report
 
 **Endpoint:** `GET /practicequiz/report?moduleName=<module_name>`
 
@@ -528,7 +659,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ## Notifications
 
-### 12. Create User in Notification System
+### 15. Create User in Notification System
 
 **Endpoint:** `POST /api/v1/user/create`
 
@@ -562,7 +693,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 13. Send Notification
+### 16. Send Notification
 
 **Endpoint:** `POST /notify/`
 
@@ -641,7 +772,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ## Health Checks
 
-### 14. Nginx Health Check
+### 17. Nginx Health Check
 
 **Endpoint:** `GET /health`
 
@@ -658,7 +789,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 15. Main API Health Check
+### 18. Main API Health Check
 
 **Endpoint:** `GET /health` (on Main API container)
 
@@ -675,7 +806,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 16. DB API Health Check
+### 19. DB API Health Check
 
 **Endpoint:** `GET /health` (on DB API container)
 
@@ -692,7 +823,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 ---
 
-### 17. Notification API Health Check
+### 20. Notification API Health Check
 
 **Endpoint:** `GET /health` (on Notification API container)
 
