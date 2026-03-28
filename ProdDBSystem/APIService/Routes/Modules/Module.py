@@ -163,6 +163,8 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
         await redis.hset(f"user:{userId}", "resumeModule", json.dumps(data))
         logging.info(f"Module progress cached in Redis - userId: {userId}, moduleName: {moduleName}, page: {Page}")
 
+        await redis.hdel(f"user:{userId}", "inProgressModules")
+
         logging.info(f"Module progress update completed successfully - userId: {userId}, moduleName: {moduleName}")
         return {"message": "Module progress update queued successfully"}
 
