@@ -112,6 +112,8 @@ async def getProfile(userId: uuid.UUID = Depends(getCurrentUser)):
         profile = await dbClient.getUserProfile(userId) 
         return profile 
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching user profile: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -138,6 +140,8 @@ async def deleteAccount(userId: uuid.UUID = Depends(getCurrentUser)):
 
         return {"message": "Account deleted successfully"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error deleting user account: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

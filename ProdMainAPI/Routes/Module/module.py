@@ -52,6 +52,8 @@ async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depen
         await dbClient.updateModuleProgress(userId, module.ModuleName, module.PageName)
         return {"message": f"Progress for module '{module.ModuleName}' updated successfully for user {userId}"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error updating module progress: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -81,6 +83,8 @@ async def completeModule(module: ModuleCompletion, userId: uuid.UUID = Depends(g
 
         return {"message": f"Module '{module.ModuleName}' completed successfully for user {userId}"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error completing module: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -107,6 +111,8 @@ async def resumeModule(moduleName: str, userId: uuid.UUID = Depends(getCurrentUs
         lastPage = await dbClient.getModuleProgress(userId, moduleName)
         return {"lastPage": lastPage}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error resuming module: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -132,6 +138,8 @@ async def getInProgressModules(userId: uuid.UUID = Depends(getCurrentUser)):
         inProgressModules = await dbClient.getInProgressModules(userId)
         return inProgressModules
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching in-progress modules: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -157,6 +165,8 @@ async def getCompletedModules(userId:uuid.UUID = Depends(getCurrentUser)):
         completedModules = await dbClient.getCompletedModules(userId)
         return completedModules
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching completed modules: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

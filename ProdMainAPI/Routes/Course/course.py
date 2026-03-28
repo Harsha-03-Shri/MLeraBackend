@@ -45,6 +45,8 @@ async def coursePurchase(course: CoursePurchase, userId: uuid.UUID = Depends(get
         await notifyClient.notifyRegistration(userId, "CoursePurchase", CourseName=course.courseName)
         return {"message": f"Course '{course.courseName}' purchased successfully by user {userId}"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error purchasing course: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -71,6 +73,8 @@ async def getCourseProgress(courseName: str, userId: uuid.UUID = Depends(getCurr
         progress = await dbClient.getCourseProgress(userId,courseName) 
         return progress
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching course progress: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -96,6 +100,8 @@ async def getEnrolledCourses(userId: uuid.UUID = Depends(getCurrentUser)):
         courses = await dbClient.getEnrolledCourses(userId)
         return {"courses": courses}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching enrolled courses: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

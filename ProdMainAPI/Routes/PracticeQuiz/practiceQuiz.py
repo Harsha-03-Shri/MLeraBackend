@@ -41,6 +41,8 @@ async def submitQuizAnswers(submission: QuizSubmission, userId: uuid.UUID = Depe
         await dbClient.submitQuiz(userId, submission.moduleName, submission.score)
         return {"message": "Quiz submitted successfully"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error submitting quiz answers: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -68,6 +70,8 @@ async def getQuizReport(moduleName: str, userId: uuid.UUID = Depends(getCurrentU
         report = await dbClient.getQuizReport(userId, moduleName) 
         return report
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error fetching quiz report: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
