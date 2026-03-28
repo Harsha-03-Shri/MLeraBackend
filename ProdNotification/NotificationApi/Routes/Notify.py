@@ -79,12 +79,12 @@ async def notify_user(notify: Notify, request: Request):
             UserData['QuizPercentage'] = notify.QuizPercentage
             UserData['ModuleName'] = notify.ModuleName
             
-        elif notify.TemplateType == "CourseCompletion":
+        elif notify.TemplateType == "CoursePurchase":
             if notify.CourseName is None:
-                logging.warning(f"CourseName is required for TemplateType 'CourseCompletion' for user {userId}.")
+                logging.warning(f"CourseName is required for TemplateType 'CoursePurchase' for user {userId}.")
                 raise HTTPException(
                     status_code=400,
-                    detail=f"CourseName is required for TemplateType 'CourseCompletion'"
+                    detail=f"CourseName is required for TemplateType 'CoursePurchase'"
                 )
             UserData['CourseName'] = notify.CourseName
             

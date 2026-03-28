@@ -125,11 +125,16 @@ class DBServiceClient:
             response = await self.client.get(f"/user/profile/{userId}")
             logging.info(f"DB API Response Status: {response.status_code}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not data:
+                raise HTTPException(status_code=404, detail="User profile not found")
+            return data
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch user profile: Status={exc.response.status_code}, Body={exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise
         except Exception as e:
             logging.error(f"Unexpected error fetching user profile: {type(e).__name__}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error communicating with DB service: {str(e)}")     
@@ -150,11 +155,16 @@ class DBServiceClient:
         try:
             response = await self.client.get(f"/practiceQuiz/report/{userId}/{moduleName}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not data:
+                raise HTTPException(status_code=404, detail="Quiz report not found")
+            return data
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch quiz report: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise
 
     
     async def submitQuiz(self, userId, moduleName, score):
@@ -196,11 +206,16 @@ class DBServiceClient:
         try:
             response = await self.client.get(f"/course/progress/{userId}/{courseName}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not data:
+                raise HTTPException(status_code=404, detail="Course progress not found")
+            return data
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch course progress: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise
     
     async def updateModuleProgress(self, userId, moduleName, pageName):
         """Update user's progress within a specific module.
@@ -268,11 +283,20 @@ class DBServiceClient:
             response.raise_for_status()
             data = response.json()
             logging.info(f"Resume module response: {data}")
-            return data.get("LastPage")
+            
+            if not data:
+                raise HTTPException(status_code=404, detail="Module progress not found")
+            
+            lastPage = data.get("LastPage")
+            if lastPage is None:
+                raise HTTPException(status_code=404, detail="Module progress not found")
+            return lastPage
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch module progress: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise
 
     async def deleteUser(self, userId):
         """Remove user account from database.
@@ -307,11 +331,16 @@ class DBServiceClient:
         try:
             response = await self.client.get(f"/module/inProgress/{userId}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not data or not data.get("modules"):
+                raise HTTPException(status_code=404, detail="No in-progress modules found")
+            return data
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch in-progress modules: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise
 
     async def getEnrolledCourses(self, userId):
         """Fetch list of courses a user is enrolled in.
@@ -326,13 +355,18 @@ class DBServiceClient:
             HTTPException: If fetch fails
         """
         try:
-            response = await self.client.get(f"/user/enrolledCourses/{userId}")
+            response = await self.client.get(f"/course/enrolled/{userId}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not data or not data.get("courses"):
+                raise HTTPException(status_code=404, detail="No enrolled courses found")
+            return data.get("courses")
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch enrolled courses: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise
 
     async def getCompletedModules(self, userId):
         """Retrieve list of modules user has completed.
@@ -349,8 +383,13 @@ class DBServiceClient:
         try:
             response = await self.client.get(f"/module/completed/{userId}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            if not data or not data.get("modules"):
+                raise HTTPException(status_code=404, detail="No completed modules found")
+            return data
 
         except httpx.HTTPStatusError as exc:
             logging.error(f"Failed to fetch completed modules: {exc.response.text}")
             raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text)
+        except HTTPException:
+            raise

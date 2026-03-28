@@ -293,6 +293,10 @@ async def getInProgressModules(userId: str, request: Request):
         logging.info(f"Query returned {len(modules)} rows - userId: {userId}")
         cursor.close()
         
+        if not modules:
+            logging.warning(f"No in-progress modules found - userId: {userId}")
+            raise HTTPException(status_code=404, detail="No in-progress modules found")
+        
         moduleNames = [module[0] for module in modules]
         courseNames = [module[1] for module in modules]
         lastPages = [module[2] for module in modules]
@@ -308,6 +312,8 @@ async def getInProgressModules(userId: str, request: Request):
         return data
 
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error while fetching in-progress modules - userId: {userId}, error: {str(e)}")
         raise HTTPException(
@@ -363,6 +369,10 @@ async def getCompletedModules(userId: str, request: Request):
         modules = cursor.fetchall()
         cursor.close()
 
+        if not modules:
+            logging.warning(f"No completed modules found - userId: {userId}")
+            raise HTTPException(status_code=404, detail="No completed modules found")
+
         moduleNames = [module[0] for module in modules]
         completionTimes = [module[1].isoformat() if module[1] else None for module in modules]
         
@@ -375,6 +385,8 @@ async def getCompletedModules(userId: str, request: Request):
         logging.info(f"Completed modules fetched from DB and cached - userId: {userId}, count: {len(moduleNames)}, modules: {moduleNames}")
         return data
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error while fetching completed modules - userId: {userId}, error: {str(e)}")
         raise HTTPException(

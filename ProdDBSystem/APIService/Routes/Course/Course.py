@@ -109,7 +109,7 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
         if not courseId:
             logging.warning(f"Course not found - courseName: {courseName}")
             cursor.close()
-            return
+            raise HTTPException(status_code=404, detail="Course not found")
 
         cursor.execute('SELECT COUNT(*) FROM "Module" WHERE "CourseId" = %s', (courseId[0],))
         totalModules = cursor.fetchone()[0]
@@ -135,6 +135,8 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
         logging.info(f"Course progress fetched successfully - userId: {userId}, courseName: {courseName}, progress: {result}")
         return result
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error while fetching course progress - userId: {userId}, courseName: {courseName}, error: {str(e)}")
         raise HTTPException(
@@ -157,6 +159,7 @@ async def getEnrolledCourses(userId: str, request: Request):
         A list of course names the user is enrolled in.
 
     Raises:
+        HTTPException 404: If no enrolled courses found.
         HTTPException 500: On internal errors.
     """
     try:
@@ -176,11 +179,17 @@ async def getEnrolledCourses(userId: str, request: Request):
         courses = cursor.fetchall()
         cursor.close()
 
+        if not courses:
+            logging.warning(f"No enrolled courses found - userId: {userId}")
+            raise HTTPException(status_code=404, detail="No enrolled courses found")
+
         courseList = [course[0] for course in courses]
         await redis.hset(f"user:{userId}", "enrolledCourse", json.dumps(courseList))
         logging.info(f"Enrolled courses fetched from DB and cached - userId: {userId}, courses: {courseList}, count: {len(courseList)}")
         return {"courses": courseList}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Error while fetching enrolled courses - userId: {userId}, error: {str(e)}")
         raise HTTPException(
