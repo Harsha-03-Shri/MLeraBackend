@@ -110,3 +110,53 @@ async def resumeModule(moduleName: str, userId: uuid.UUID = Depends(getCurrentUs
     except Exception as e:
         logging.error(f"Error resuming module: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.get("/inProgress")
+async def getInProgressModules(userId: uuid.UUID = Depends(getCurrentUser)):
+    """Get all modules that are currently in progress for the user.
+
+    Returns a list of modules where the user has started but not yet
+    completed the learning process.
+
+    Args:
+        userId: Authenticated user ID from JWT token
+
+    Returns:
+        dict: List of in-progress module names
+
+    Raises:
+        HTTPException: If in-progress modules fetch fails
+    """
+    try:
+        logging.info(f"Fetching in-progress modules for user: {userId}")
+        inProgressModules = await dbClient.getInProgressModules(userId)
+        return inProgressModules
+
+    except Exception as e:
+        logging.error(f"Error fetching in-progress modules: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.get("/completed")
+async def getCompletedModules(userId:uuid.UUID = Depends(getCurrentUser)):
+    """Get all modules that have been completed by the user.
+
+    Returns a list of modules where the user has successfully finished
+    the learning process and quiz.
+
+    Args:
+        userId: Authenticated user ID from JWT token
+
+    Returns:
+        dict: List of completed module names
+
+    Raises:
+        HTTPException: If completed modules fetch fails
+    """
+    try:
+        logging.info(f"Fetching completed modules for user: {userId}")
+        completedModules = await dbClient.getCompletedModules(userId)
+        return completedModules
+
+    except Exception as e:
+        logging.error(f"Error fetching completed modules: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
