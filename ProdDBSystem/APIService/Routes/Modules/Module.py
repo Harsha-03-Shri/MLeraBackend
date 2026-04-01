@@ -101,6 +101,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
     finally:
         if conn:
             request.app.state.db_instance.releaseDBconnection(conn)
+            
 @router.post("/update")
 async def updateModule(moduleProgress: ModuleProgress, request: Request):
     """

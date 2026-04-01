@@ -27,10 +27,11 @@ class Database:
         """Initialize the connection pool and register UUID type support."""
         try:
             self.pool = pool.SimpleConnectionPool(
-                minconn=1, maxconn=50,
+                minconn=2, maxconn=50,
                 host=DB_HOST, database=DB_NAME,
                 user=DB_USER, password=DB_PASS,
-                port=DB_PORT
+                port=DB_PORT,
+                connect_timeout=15
             )
             logging.info("DB pool created successfully")
         except Exception as e:

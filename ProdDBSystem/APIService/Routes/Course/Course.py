@@ -89,6 +89,7 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
         HTTPException 404: If no progress record is found.
         HTTPException 500: On internal errors.
     """
+    conn = None
     try:
         logging.info(f"Fetching course progress - userId: {userId}, courseName: {courseName}")
         redis = await request.app.state.redis_instance.getRedisconnection()
@@ -143,6 +144,9 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
             status_code=500,
             detail="Internal error while fetching course progress"
         )
+    finally:
+        if conn:
+            request.app.state.db_instance.releaseDBconnection(conn)
 
 @router.get("/enrolled/{userId}")
 async def getEnrolledCourses(userId: str, request: Request):
@@ -162,6 +166,7 @@ async def getEnrolledCourses(userId: str, request: Request):
         HTTPException 404: If no enrolled courses found.
         HTTPException 500: On internal errors.
     """
+    conn = None
     try:
         logging.info(f"Fetching enrolled courses - userId: {userId}")
         redis = await request.app.state.redis_instance.getRedisconnection()
@@ -196,6 +201,9 @@ async def getEnrolledCourses(userId: str, request: Request):
             status_code=500,
             detail="Internal error while fetching enrolled courses"
         )
+    finally:
+        if conn:
+            request.app.state.db_instance.releaseDBconnection(conn)
 
 
 

@@ -21,7 +21,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-origins = ["*"]  # Configure specific origins in production
+origins = ["*"]  
 
 app.add_middleware(
     CORSMiddleware,
