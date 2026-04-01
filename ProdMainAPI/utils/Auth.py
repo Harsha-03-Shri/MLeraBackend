@@ -57,7 +57,7 @@ def createAccessToken(userId: uuid.UUID):
     """
     payload = {
         "userId": str(userId),
-        "exp": datetime.utcnow() + timedelta(hours=1)
+        "exp": datetime.utcnow() + timedelta(hours=24)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
