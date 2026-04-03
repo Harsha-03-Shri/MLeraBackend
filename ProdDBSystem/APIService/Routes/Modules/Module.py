@@ -229,8 +229,10 @@ async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
         await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
         logging.info(f"Module completion event sent to SQS - userId: {userId}, moduleName: {moduleName}, quizPercentage: {QuizPercentage}")
         
+        await redis.hdel(f"user:{userId}", "courseProgress")
         await redis.hdel(f"user:{userId}", "inProgressModules")
         await redis.hdel(f"user:{userId}", "completedModules")
+        
         logging.info(f"Cleared in-progress modules cache - userId: {userId}")
 
         logging.info(f"Module completion processed successfully - userId: {userId}, moduleName: {moduleName}")
