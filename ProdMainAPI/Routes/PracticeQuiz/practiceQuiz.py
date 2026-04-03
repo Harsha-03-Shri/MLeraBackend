@@ -22,7 +22,7 @@ class QuizSubmission(BaseModel):
     moduleName: str
     score: int
 
-@router.post("/submit")
+@router.post("/submit", status_code=201, responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def submitQuizAnswers(submission: QuizSubmission, userId: uuid.UUID = Depends(getCurrentUser)):
     """Submit quiz answers for authenticated user.
     
@@ -48,7 +48,7 @@ async def submitQuizAnswers(submission: QuizSubmission, userId: uuid.UUID = Depe
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-@router.get("/report")
+@router.get("/report", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def getQuizReport(moduleName: str, userId: uuid.UUID = Depends(getCurrentUser)):
     """Retrieve quiz performance report for authenticated user.
     

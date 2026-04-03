@@ -69,7 +69,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
                 detail="Module not found"
             )
 
-        cursor.execute('SELECT "Page" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
+        cursor.execute('SELECT "CompletedPage" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
         progress = cursor.fetchone()
         cursor.close()  
 
@@ -102,7 +102,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
         if conn:
             request.app.state.db_instance.releaseDBconnection(conn)
             
-@router.post("/update")
+@router.post("/update", status_code=201)
 async def updateModule(moduleProgress: ModuleProgress, request: Request):
     """
     Update the last visited page for a user's module.
@@ -178,7 +178,7 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
             detail="Internal error while updating module progress"
         )
 
-@router.post("/complete")
+@router.post("/complete", status_code=201)
 async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
     """
     Mark a module as completed for a user.
@@ -281,7 +281,7 @@ async def getInProgressModules(userId: str, request: Request):
         
        
         query = """
-            SELECT m."ModuleName",c."CourseName",p."Page"
+            SELECT m."ModuleName",c."CourseName",p."CompletedPage"
             FROM "Module" m
             JOIN "UserModuleProgress" p ON m."ModuleId" = p."ModuleId"
             LEFT JOIN "Course" c ON c."CourseId" = m."CourseId"

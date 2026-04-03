@@ -19,7 +19,7 @@ class CoursePurchase(BaseModel):
     courseName: str
 
 
-@router.post("/purchase")
+@router.post("/purchase", status_code=201)
 async def purchaseCourse(coursePurchase: CoursePurchase, request: Request):
     """Queue a course purchase event and cache the result.
 

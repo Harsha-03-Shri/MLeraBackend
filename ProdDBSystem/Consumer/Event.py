@@ -13,6 +13,20 @@ logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %
 
 db = Database()
 
+courseQuery = {
+    "Supervised Learning": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "LastSeenPage") VALUES (%s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = %s',
+        "modules": ["linear regression", "logistic regression"]
+    },
+    "Unsupervised Learning": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "LastSeenPage") VALUES (%s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = %s',
+        "modules": ["k-means clustering"]
+    },
+    "Pre-requisite course": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "LastSeenPage") VALUES (%s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = %s',
+        "modules": ["basics"]
+    }
+}
 
 def submitPracticeQuiz(data):
     """Insert a practice quiz score into the database.
@@ -78,8 +92,24 @@ def purchaseCourse(data):
             return
         cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s)', (userId, courseId[0]))
         conn.commit()
+
+        moduleList = courseQuery.get(courseName, {}).get("modules", [])
+
+        if moduleList is None:
+            logging.warning("No modules found for course: %s", courseName)
+            cursor.close()
+            return
+
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = ANY(%s)', (moduleList,))
+        moduleIds = [row[0] for row in cursor.fetchall()]
+        conn.commit()
+
+        for moduleId in moduleIds:
+            cursor.execute(courseQuery[courseName]["query"], (userId, moduleId, "Conversation","Conversation"))
+        conn.commit()
         cursor.close()
         logging.info("Inserted course purchase for user: %s, course: %s", userId, courseName)
+        logging.info("Initialized module progress for user: %s, course: %s, modules: %s", userId, courseName, moduleList)
 
     except Exception as e:
         logging.error(f"Error while processing course purchase: {e}")
@@ -117,7 +147,7 @@ def updateModule(data):
             return
 
         cursor.execute(
-            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "Page", "Completed") VALUES (%s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "Page" = %s',
+            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed") VALUES (%s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "CompletedPage" = %s',
             (userId, moduleId[0], Page, False, Page)
         )
         conn.commit()

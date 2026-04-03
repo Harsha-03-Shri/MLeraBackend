@@ -232,7 +232,7 @@ class DBServiceClient:
             payload = {
                 "userId": str(userId),
                 "moduleName": moduleName,
-                "Page": pageName
+                "CompletedPage": pageName
             }
             response = await self.client.post("/module/update", json=payload)
             response.raise_for_status()
