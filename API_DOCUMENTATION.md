@@ -62,10 +62,11 @@ Authorization: Bearer <your_jwt_token>
 - `Profession`: Minimum 3 characters
 - `Password`: Minimum 6 characters
 
-**Response:** `200 OK`
+**Response:** `201 Created`
 ```json
 {
-  "message": "User registered successfully"
+  "message": "User registered successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
@@ -100,6 +101,7 @@ Authorization: Bearer <your_jwt_token>
 **Response:** `200 OK`
 ```json
 {
+  "message": "Login successful",
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
@@ -148,6 +150,7 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: User not found
 - `500`: Internal server error
 
@@ -194,6 +197,7 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `500`: Internal server error
 
 **Note:** This action is irreversible. All user data will be permanently deleted.
@@ -222,7 +226,7 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-**Response:** `200 OK`
+**Response:** `201 Created`
 ```json
 {
   "message": "Course 'Python Fundamentals' purchased successfully by user 123e4567-e89b-12d3-a456-426614174000"
@@ -241,6 +245,7 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Course not found
 - `500`: Internal server error
 
@@ -288,6 +293,7 @@ GET /course/progress?courseName=Python%20Fundamentals
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Course not found
 - `500`: Internal server error
 
@@ -326,6 +332,8 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
+- `404`: No enrolled courses found
 - `500`: Internal server error
 
 ---
@@ -353,7 +361,7 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-**Response:** `200 OK`
+**Response:** `201 Created`
 ```json
 {
   "message": "Progress for module 'Introduction to Python' updated successfully for user 123e4567-e89b-12d3-a456-426614174000"
@@ -371,6 +379,7 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Module not found
 - `500`: Internal server error
 
@@ -401,7 +410,7 @@ Authorization: Bearer <jwt_token>
 - `QuizPercentage`: 0-100, required
 - `ModuleName`: Required
 
-**Response:** `200 OK`
+**Response:** `201 Created`
 ```json
 {
   "message": "Module 'Introduction to Python' completed successfully for user 123e4567-e89b-12d3-a456-426614174000"
@@ -424,6 +433,7 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Module not found
 - `500`: Internal server error
 
@@ -466,6 +476,7 @@ GET /module/resume?moduleName=Introduction%20to%20Python
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Module not found or no progress saved
 - `500`: Internal server error
 
@@ -516,6 +527,8 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
+- `404`: No in-progress modules found
 - `500`: Internal server error
 
 ---
@@ -561,6 +574,8 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
+- `404`: No completed modules found
 - `500`: Internal server error
 
 ---
@@ -588,7 +603,7 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-**Response:** `200 OK`
+**Response:** `201 Created`
 ```json
 {
   "message": "Quiz submitted successfully"
@@ -608,6 +623,7 @@ Authorization: Bearer <jwt_token>
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Module not found
 - `500`: Internal server error
 
@@ -652,6 +668,7 @@ GET /practicequiz/report?moduleName=Introduction%20to%20Python
 
 **Error Responses:**
 - `401`: Invalid or expired token
+- `403`: Forbidden - Insufficient permissions
 - `404`: Module not found or no quiz attempts
 - `500`: Internal server error
 
@@ -852,8 +869,10 @@ All endpoints return errors in this format:
 
 **Common HTTP Status Codes:**
 - `200`: Success
+- `201`: Created (for POST endpoints that create resources)
 - `400`: Bad request (validation error)
 - `401`: Unauthorized (invalid/expired token)
+- `403`: Forbidden (authenticated but insufficient permissions)
 - `404`: Resource not found
 - `500`: Internal server error
 
@@ -952,7 +971,7 @@ Client → Main API → DB API → SQS Queue
 **UserModuleProgress**
 - UserId (UUID, PK, FK → User)
 - ModuleId (UUID, PK, FK → Module)
-- Page (INTEGER)
+- CompletedPage (TEXT)
 - Completed (BOOLEAN)
 - CompletedOn (TIMESTAMP)
 
