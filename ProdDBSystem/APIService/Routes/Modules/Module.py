@@ -16,7 +16,8 @@ router = APIRouter(prefix="/module", tags=["Module"])
 class ModuleProgress(BaseModel):
     userId: str 
     moduleName: str 
-    Page: str
+    CompletedPage: str
+    LastseenPage: str
 
 class ModuleCompletion(BaseModel):
     userId: str 
@@ -124,22 +125,23 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
         HTTPException 500: On internal errors.
     """
     try:
-        logging.info(f"Processing module progress update - userId: {moduleProgress.userId}, moduleName: {moduleProgress.moduleName}, page: {moduleProgress.Page}")
+        logging.info(f"Processing module progress update - userId: {moduleProgress.userId}, moduleName: {moduleProgress.moduleName}, page: {moduleProgress.CompletedPage}")
         redis = await request.app.state.redis_instance.getRedisconnection()
         sqs = request.app.state.sqs_instance
         
         userId = moduleProgress.userId
         moduleName = moduleProgress.moduleName
-        Page = moduleProgress.Page
-
+        CompletedPage = moduleProgress.CompletedPage
+        LastseenPage = moduleProgress.LastseenPage
         data = {
             "userId": userId,
             "moduleName": moduleName,
-            "LastPage": Page
+            "CompletedPage": CompletedPage,
+            "LastseenPage": LastseenPage
         }
 
-        if not all([userId, moduleName, Page]):
-            logging.warning(f"Missing required fields in module progress data - userId: {userId}, moduleName: {moduleName}, page: {Page}")
+        if not all([userId, moduleName, CompletedPage]):
+            logging.warning(f"Missing required fields in module progress data - userId: {userId}, moduleName: {moduleName}, page: {CompletedPage}")
             raise HTTPException(
                 status_code=400,
                 detail="Missing required fields in module progress data"
@@ -151,7 +153,7 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
         }
 
         await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
-        logging.info(f"Module update event sent to SQS - userId: {userId}, moduleName: {moduleName}, page: {Page}")
+        logging.info(f"Module update event sent to SQS - userId: {userId}, moduleName: {moduleName}, page: {CompletedPage}")
 
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
 
@@ -162,7 +164,7 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
                 logging.info(f"Cleared old resume module cache - userId: {userId}, moduleName: {moduleName}")
         
         await redis.hset(f"user:{userId}", "resumeModule", json.dumps(data))
-        logging.info(f"Module progress cached in Redis - userId: {userId}, moduleName: {moduleName}, page: {Page}")
+        logging.info(f"Module progress cached in Redis - userId: {userId}, moduleName: {moduleName}, page: {CompletedPage}")
 
         await redis.hdel(f"user:{userId}", "inProgressModules")
 

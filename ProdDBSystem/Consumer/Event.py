@@ -131,9 +131,10 @@ def updateModule(data):
     try:
         userId = data.get("userId")
         moduleName = data.get("moduleName")
-        Page = data.get("LastPage")
+        CompletedPage = data.get("CompletedPage")
+        LastseenPage = data.get("LastseenPage")
 
-        if not all([userId, moduleName, Page]):
+        if not all([userId, moduleName, CompletedPage,LastseenPage]):
             logging.warning("Missing required fields in data: %s", json.dumps(data))
             return
 
@@ -147,13 +148,12 @@ def updateModule(data):
             return
 
         cursor.execute(
-            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed") VALUES (%s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "CompletedPage" = %s',
-            (userId, moduleId[0], Page, False, Page)
+            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s::text[], %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage", "CompletedPage" = CASE WHEN %s = ANY("UserModuleProgress"."CompletedPage") THEN "UserModuleProgress"."CompletedPage" ELSE array_append("UserModuleProgress"."CompletedPage", %s) END',
+            (userId, moduleId[0], [CompletedPage], False, LastseenPage, CompletedPage, CompletedPage)
         )
         conn.commit()
         cursor.close()
-        logging.info("Updated module progress for user: %s, module: %s, page: %s", userId, moduleName, Page)
-
+        logging.info("Updated module progress for user: %s, module: %s, page: %s", userId, moduleName, CompletedPage)
     except Exception as e:
         logging.error(f"Error while processing update module: {e}")
         if conn:

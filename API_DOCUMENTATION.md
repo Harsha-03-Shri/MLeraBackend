@@ -275,20 +275,32 @@ GET /course/progress?courseName=Python%20Fundamentals
 **Response:** `200 OK`
 ```json
 {
-  "totalModules": 10,
-  "inProgress": 3,
-  "completed": 5
+  "inProgress": {
+    "Introduction to Python": ["intro", "basics", "functions"],
+    "Variables and Data Types": ["variables", "types"]
+  },
+  "completed": [
+    "Control Flow",
+    "Loops",
+    "Functions Advanced"
+  ]
 }
 ```
+
+**Response Fields:**
+- `inProgress`: Dictionary mapping module names to arrays of completed pages (TEXT[])
+- `completed`: Array of completed module names
 
 **What Happens:**
 1. Validates JWT token and extracts userId
 2. Checks Redis cache for progress data
 3. If cache miss, sends request to DB API
 4. DB API queries:
-   - Total modules in course from `Module` table
-   - User's progress from `UserModuleProgress` table
-5. Calculates completed vs in-progress modules
+   - Gets courseId from `Course` table
+   - Queries `UserModuleProgress` joined with `Module` table:
+     - For completed modules: Returns module names where `Completed` = TRUE
+     - For in-progress modules: Returns module names and `CompletedPage` arrays where `Completed` = FALSE
+5. Returns dictionary with in-progress modules (with page arrays) and completed module names
 6. Caches result in Redis
 
 **Error Responses:**
@@ -357,7 +369,8 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "ModuleName": "Introduction to Python",
-  "PageName": "Variables and Data Types"
+  "CompletedPageName": "Variables",
+  "LastseenPageName": "Data Types"
 }
 ```
 
@@ -370,12 +383,19 @@ Authorization: Bearer <jwt_token>
 
 **What Happens:**
 1. Validates JWT token and extracts userId
-2. Sends update event to SQS queue
+2. Sends update event to SQS queue with CompletedPageName and LastseenPageName
 3. Lambda consumer processes event:
    - Looks up moduleId from `Module` table
-   - Upserts record in `UserModuleProgress` table with page number
-   - Sets `Completed` = false
-4. Invalidates Redis cache for resume data
+   - Upserts record in `UserModuleProgress` table:
+     - `CompletedPage`: TEXT[] array - appends new page if not already present
+     - `LastSeenPage`: TEXT field - updates to most recent page visited
+     - `Completed`: Set to false
+4. Invalidates Redis cache for resume data and in-progress modules
+
+**Database Schema:**
+- `CompletedPage` (TEXT[]): Array of all unique pages user has completed
+- `LastSeenPage` (TEXT): Most recent page user visited
+- Logic prevents duplicate pages in CompletedPage array
 
 **Error Responses:**
 - `401`: Invalid or expired token
@@ -463,9 +483,11 @@ GET /module/resume?moduleName=Introduction%20to%20Python
 **Response:** `200 OK`
 ```json
 {
-  "lastPage": "Variables and Data Types"
+  "lastPage": "Data Types"
 }
 ```
+
+**Note:** Returns the `LastSeenPage` value, which is the most recent page the user visited, not the CompletedPage array.
 
 **What Happens:**
 1. Validates JWT token and extracts userId
@@ -509,12 +531,14 @@ Authorization: Bearer <jwt_token>
     "Python Fundamentals"
   ],
   "lastPages": [
-    "Functions",
-    "Lists",
-    "If Statements"
+    ["intro", "basics", "functions"],
+    ["variables", "types"],
+    ["if-statements"]
   ]
 }
 ```
+
+**Note:** `lastPages` returns TEXT[] arrays containing all unique pages completed for each module.
 
 **What Happens:**
 1. Validates JWT token and extracts userId
@@ -875,6 +899,294 @@ All endpoints return errors in this format:
 - `403`: Forbidden (authenticated but insufficient permissions)
 - `404`: Resource not found
 - `500`: Internal server error
+
+---
+
+## Nginx Reverse Proxy Configuration
+
+### Overview
+
+Nginx acts as a **reverse proxy** and **API gateway** sitting between the AWS Load Balancer and your backend services. It's the single entry point that routes incoming requests to the appropriate microservice.
+
+### Request Flow
+
+```
+Client → AWS ALB (Port 80) → EC2 (Port 80) → Nginx Container (Port 80) → Backend Services
+                                                      ↓
+                                    ┌─────────────────┼─────────────────┐
+                                    ↓                 ↓                 ↓
+                            Main API (8000)   DB API (8080)   Notification API (8001)
+```
+
+### Nginx Configuration Breakdown
+
+#### 1. Events Block
+```nginx
+events {
+    worker_connections 1024;
+}
+```
+**Purpose:** Configures how Nginx handles connections
+- `worker_connections 1024`: Each Nginx worker process can handle up to 1024 simultaneous connections
+- With default 1 worker, this means 1024 concurrent connections total
+
+#### 2. Upstream Blocks
+```nginx
+upstream main_api {
+    server main-api:8000;
+}
+
+upstream db_api {
+    server db-api:8080;
+}
+
+upstream notification_api {
+    server notification-api:8001;
+}
+```
+**Purpose:** Defines backend service groups for load balancing
+- `main-api:8000`: Docker service name and port (Docker DNS resolves this)
+- `db-api:8080`: Database service endpoint
+- `notification-api:8001`: Notification service endpoint
+
+**Why use upstreams?**
+- Enables load balancing if you scale to multiple containers
+- Provides health checking capabilities
+- Cleaner configuration with reusable names
+
+#### 3. Server Block
+```nginx
+server {
+    listen 80;
+    ...
+}
+```
+**Purpose:** Nginx listens on port 80 for incoming HTTP requests from the Load Balancer
+
+#### 4. Health Check Endpoint
+```nginx
+location /health {
+    return 200 "healthy\n";
+    add_header Content-Type text/plain;
+}
+```
+**Purpose:** ALB Target Group health checks
+- ALB periodically sends `GET /health` requests
+- Nginx responds with `200 OK` if running
+- If Nginx is down, ALB marks the EC2 instance as unhealthy
+
+**Request:** `http://your-alb.amazonaws.com/health`
+**Response:** `200 OK` with body "healthy"
+
+#### 5. Location Blocks (Routing Rules)
+
+**Main API Routes:**
+```nginx
+location /api/main/ {
+    proxy_pass http://main_api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+**What happens:**
+1. Client requests: `http://alb.com/api/main/user/login`
+2. Nginx matches `/api/main/` prefix
+3. Strips `/api/main` and forwards `/user/login` to `main-api:8000`
+4. Main API receives: `GET /user/login`
+
+**Headers explained:**
+- `Host`: Original hostname from client request
+- `X-Real-IP`: Client's actual IP address (not ALB's IP)
+- `X-Forwarded-For`: Chain of proxy IPs (for tracking request path)
+
+**DB API Routes:**
+```nginx
+location /api/db/ {
+    proxy_pass http://db_api/;
+    ...
+}
+```
+- Client: `http://alb.com/api/db/user/profile/123`
+- Forwards to: `db-api:8080/user/profile/123`
+
+**Notification API Routes:**
+```nginx
+location /api/notification/ {
+    proxy_pass http://notification_api/;
+    ...
+}
+```
+- Client: `http://alb.com/api/notification/notify/`
+- Forwards to: `notification-api:8001/notify/`
+
+### Why Use Nginx?
+
+#### 1. **Single Entry Point**
+- One public endpoint for all services
+- Simplifies client configuration
+- Easier to manage SSL/TLS certificates
+
+#### 2. **Service Isolation**
+- Backend services don't need to be publicly accessible
+- Only Nginx container exposes port 80
+- Services communicate via Docker internal network
+
+#### 3. **Load Balancing**
+```nginx
+# If you scale to multiple containers:
+upstream main_api {
+    server main-api-1:8000;
+    server main-api-2:8000;
+    server main-api-3:8000;
+}
+```
+Nginx automatically distributes requests across instances
+
+#### 4. **Request Routing**
+- Routes by URL path prefix
+- No need for clients to know individual service ports
+- Easy to add/remove services without client changes
+
+#### 5. **Performance**
+- Nginx is extremely fast and lightweight
+- Handles static content efficiently
+- Connection pooling to backend services
+- Request buffering
+
+#### 6. **Security**
+- Hides internal service architecture
+- Can add rate limiting
+- Can add authentication at gateway level
+- Protects against slow HTTP attacks
+
+### Current Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    AWS Load Balancer                        │
+│                  (Port 80, Public IP)                       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      EC2 Instance                           │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │              Nginx Container (Port 80)                │ │
+│  │                                                       │ │
+│  │  Routes:                                             │ │
+│  │  /health          → 200 OK                          │ │
+│  │  /api/main/*      → main-api:8000                   │ │
+│  │  /api/db/*        → db-api:8080                     │ │
+│  │  /api/notification/* → notification-api:8001        │ │
+│  └───────────┬───────────────┬───────────────┬──────────┘ │
+│              │               │               │            │
+│  ┌───────────▼─────┐ ┌──────▼──────┐ ┌─────▼──────────┐ │
+│  │   Main API      │ │   DB API    │ │ Notification   │ │
+│  │   (Port 8000)   │ │ (Port 8080) │ │   API (8001)   │ │
+│  └─────────────────┘ └─────────────┘ └────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Example Request Flow
+
+**User Login Request:**
+
+1. **Client sends:**
+   ```
+   POST http://mleraalb-1595386243.ap-south-1.elb.amazonaws.com/api/main/user/login
+   ```
+
+2. **AWS ALB receives:**
+   - Checks target group health
+   - Forwards to EC2 instance on port 80
+
+3. **Nginx receives:**
+   ```
+   POST /api/main/user/login
+   ```
+   - Matches `location /api/main/`
+   - Strips `/api/main` prefix
+   - Adds proxy headers
+
+4. **Main API receives:**
+   ```
+   POST /user/login
+   Headers:
+     Host: mleraalb-1595386243.ap-south-1.elb.amazonaws.com
+     X-Real-IP: 203.0.113.45 (client's actual IP)
+     X-Forwarded-For: 203.0.113.45
+   ```
+
+5. **Response flows back:**
+   ```
+   Main API → Nginx → ALB → Client
+   ```
+
+### Docker Compose Integration
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"  # Expose to host
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - app-network
+
+  main-api:
+    # No ports exposed to host!
+    # Only accessible via Docker network
+    networks:
+      - app-network
+```
+
+**Key points:**
+- Only Nginx exposes port 80 to the host
+- Backend services are isolated on `app-network`
+- Services communicate using Docker DNS (service names)
+
+### Benefits of This Architecture
+
+1. **Microservices Pattern**: Each service is independent
+2. **Scalability**: Can scale services independently
+3. **Security**: Backend services not directly accessible
+4. **Flexibility**: Easy to add new services or change routing
+5. **Monitoring**: Single point to add logging/metrics
+6. **SSL Termination**: Can add HTTPS at Nginx level
+
+### Potential Enhancements
+
+```nginx
+# Rate limiting
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+location /api/main/ {
+    limit_req zone=api_limit burst=20;
+    proxy_pass http://main_api/;
+}
+
+# Caching
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:10m;
+
+location /api/main/static/ {
+    proxy_cache api_cache;
+    proxy_cache_valid 200 1h;
+    proxy_pass http://main_api/static/;
+}
+
+# CORS headers
+add_header Access-Control-Allow-Origin *;
+add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+
+# Timeouts
+proxy_connect_timeout 60s;
+proxy_send_timeout 60s;
+proxy_read_timeout 60s;
+```
 
 ---
 

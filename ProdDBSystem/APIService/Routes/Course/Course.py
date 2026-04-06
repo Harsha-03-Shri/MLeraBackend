@@ -112,26 +112,15 @@ async def getCourseProgress(userId: str, courseName: str, request: Request):
             cursor.close()
             raise HTTPException(status_code=404, detail="Course not found")
 
-        cursor.execute('SELECT COUNT(*) FROM "Module" WHERE "CourseId" = %s', (courseId[0],))
-        totalModules = cursor.fetchone()[0]
-        logging.info(f"Total modules found - courseName: {courseName}, totalModules: {totalModules}")
+        cursor.execute('SELECT "ModuleName" FROM "UserModuleProgress" INNER JOIN "Module" ON "UserModuleProgress"."ModuleId" = "Module"."ModuleId" WHERE "CourseId" = %s AND "UserId" = %s AND "Completed" = %s', (courseId[0], userId, True))
+        completedModules = [row[0] for row in cursor.fetchall()]
 
-        cursor.execute('SELECT "Completed" FROM "UserModuleProgress" WHERE "UserId" = %s', (userId,))
-        progress = cursor.fetchall()
-        cursor.close()
-
-        inprogress = 0
-        completed = 0
-        for row in progress:
-            if not row[0]:
-                inprogress += 1
-            else:
-                completed += 1
-
+        cursor.execute('SELECT "ModuleName","CompletedPage" FROM "UserModuleProgress" INNER JOIN "Module" ON "UserModuleProgress"."ModuleId" = "Module"."ModuleId" WHERE "CourseId" = %s AND "UserId" = %s AND "Completed" = %s', (courseId[0], userId, False))
+        inprogress = cursor.fetchall()
+        inprogress_dict = {row[0]: row[1] for row in inprogress}
         result = {
-            "totalModules": totalModules,
-            "inProgress": inprogress,
-            "completed": completed
+            "inProgress": inprogress_dict,
+            "completed": completedModules
         }
         logging.info(f"Course progress fetched successfully - userId: {userId}, courseName: {courseName}, progress: {result}")
         return result

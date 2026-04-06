@@ -23,7 +23,9 @@ notifyClient = NotifyServiceClient()
 class ModuleProgress(BaseModel):
     """Module progress update request model."""
     ModuleName: str
-    PageName: str
+    CompletedPageName: str
+    LastseenPageName: str
+    
 
 class ModuleCompletion(BaseModel):
     """Module completion request model."""
@@ -49,7 +51,7 @@ async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depen
     """
     try:
         logging.info(f"Updating progress for user {userId} on module: {module.ModuleName}")
-        await dbClient.updateModuleProgress(userId, module.ModuleName, module.PageName)
+        await dbClient.updateModuleProgress(userId, module.ModuleName, module.CompletedPageName, module.LastseenPageName)
         return {"message": f"Progress for module '{module.ModuleName}' updated successfully for user {userId}"}
 
     except HTTPException:
