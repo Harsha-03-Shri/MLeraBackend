@@ -23,14 +23,16 @@ notifyClient = NotifyServiceClient()
 class ModuleProgress(BaseModel):
     """Module progress update request model."""
     ModuleName: str
-    PageName: str
+    CompletedPageName: str
+    LastseenPageName: str
+    
 
 class ModuleCompletion(BaseModel):
     """Module completion request model."""
     ModuleName: str
     QuizPercentage: float = Field(ge=0, le=100)
 
-@router.post("/update") 
+@router.post("/update", status_code=201, responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depends(getCurrentUser)):
     """Update user's progress within a module.
     
@@ -49,7 +51,7 @@ async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depen
     """
     try:
         logging.info(f"Updating progress for user {userId} on module: {module.ModuleName}")
-        await dbClient.updateModuleProgress(userId, module.ModuleName, module.PageName)
+        await dbClient.updateModuleProgress(userId, module.ModuleName, module.CompletedPageName, module.LastseenPageName)
         return {"message": f"Progress for module '{module.ModuleName}' updated successfully for user {userId}"}
 
     except HTTPException:
@@ -58,7 +60,7 @@ async def updateModuleProgress(module: ModuleProgress, userId: uuid.UUID = Depen
         logging.error(f"Error updating module progress: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.post("/complete")
+@router.post("/complete", status_code=201, responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def completeModule(module: ModuleCompletion, userId: uuid.UUID = Depends(getCurrentUser)):
     """Mark a module as completed with quiz score.
     
@@ -89,7 +91,7 @@ async def completeModule(module: ModuleCompletion, userId: uuid.UUID = Depends(g
         logging.error(f"Error completing module: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/resume")
+@router.get("/resume", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def resumeModule(moduleName: str, userId: uuid.UUID = Depends(getCurrentUser)):
     """Get the last accessed page in a module for resume functionality.
     
@@ -117,7 +119,7 @@ async def resumeModule(moduleName: str, userId: uuid.UUID = Depends(getCurrentUs
         logging.error(f"Error resuming module: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/inProgress")
+@router.get("/inProgress", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def getInProgressModules(userId: uuid.UUID = Depends(getCurrentUser)):
     """Get all modules that are currently in progress for the user.
 
@@ -144,7 +146,7 @@ async def getInProgressModules(userId: uuid.UUID = Depends(getCurrentUser)):
         logging.error(f"Error fetching in-progress modules: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/completed")
+@router.get("/completed", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def getCompletedModules(userId:uuid.UUID = Depends(getCurrentUser)):
     """Get all modules that have been completed by the user.
 

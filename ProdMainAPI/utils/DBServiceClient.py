@@ -217,7 +217,7 @@ class DBServiceClient:
         except HTTPException:
             raise
     
-    async def updateModuleProgress(self, userId, moduleName, pageName):
+    async def updateModuleProgress(self, userId, moduleName, CompletedPageName, LastseenPageName):
         """Update user's progress within a specific module.
         
         Args:
@@ -232,7 +232,8 @@ class DBServiceClient:
             payload = {
                 "userId": str(userId),
                 "moduleName": moduleName,
-                "Page": pageName
+                "CompletedPage": CompletedPageName,
+                "LastseenPage": LastseenPageName
             }
             response = await self.client.post("/module/update", json=payload)
             response.raise_for_status()

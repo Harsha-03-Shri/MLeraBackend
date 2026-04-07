@@ -29,7 +29,7 @@ class UserLogin(BaseModel):
     Password: SecretStr
 
 
-@router.post("/register")
+@router.post("/register", status_code=201)
 async def userRegistration(user: User, request: Request):
     """Register a new user and store credentials in the database.
 

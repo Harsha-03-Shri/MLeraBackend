@@ -33,7 +33,7 @@ class UserLogin(BaseModel):
     Password: SecretStr = Field(min_length=6)
 
 
-@router.post("/register")
+@router.post("/register", status_code=201)
 async def register(response:Response,user: UserRegister):
     """Register a new user account.
     
@@ -92,7 +92,7 @@ async def login(response:Response,user: UserLogin):
         logging.error(f"Error logging in user: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid credentials")  
 
-@router.get("/profile")
+@router.get("/profile", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def getProfile(userId: uuid.UUID = Depends(getCurrentUser)):
     """Retrieve authenticated user's profile.
     
@@ -118,7 +118,7 @@ async def getProfile(userId: uuid.UUID = Depends(getCurrentUser)):
         logging.error(f"Error fetching user profile: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.post("/delete")
+@router.post("/delete", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def deleteAccount(userId: uuid.UUID = Depends(getCurrentUser)):
     """Delete user account.
 

@@ -18,7 +18,7 @@ class Submit(BaseModel):
     moduleName: str
     score: int
 
-@router.post("/submit")
+@router.post("/submit", status_code=201)
 async def submitPracticeQuiz(submitData: Submit, request: Request):
     """Submit a practice quiz score and update the cached report.
 

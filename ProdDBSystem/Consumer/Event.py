@@ -13,6 +13,20 @@ logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %
 
 db = Database()
 
+courseQuery = {
+    "supervised learning": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage"',
+        "modules": ["linear regression", "logistic regression"]
+    },
+    "unsupervised learning": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage"',
+        "modules": ["k-means clustering"]
+    },
+    "pre-requisite course": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage"',
+        "modules": ["basics"]
+    }
+}
 
 def submitPracticeQuiz(data):
     """Insert a practice quiz score into the database.
@@ -76,10 +90,26 @@ def purchaseCourse(data):
             logging.warning("Course not found for name: %s", courseName)
             cursor.close()
             return
-        cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s)', (userId, courseId[0]))
+        cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s) ON CONFLICT ("UserId", "CourseId") DO NOTHING', (userId, courseId[0]))
+        conn.commit()
+
+        moduleList = courseQuery.get(courseName, {}).get("modules", [])
+
+        if not moduleList:
+            logging.warning("No modules found for course: %s", courseName)
+            cursor.close()
+            return
+
+        cursor.execute('SELECT "ModuleId" FROM "Module" WHERE "ModuleName" = ANY(%s)', (moduleList,))
+        moduleIds = [row[0] for row in cursor.fetchall()]
+        conn.commit()
+
+        for moduleId in moduleIds:
+            cursor.execute(courseQuery[courseName]["query"], (userId, moduleId, [], False, "Conversation"))
         conn.commit()
         cursor.close()
         logging.info("Inserted course purchase for user: %s, course: %s", userId, courseName)
+        logging.info("Initialized module progress for user: %s, course: %s, modules: %s", userId, courseName, moduleList)
 
     except Exception as e:
         logging.error(f"Error while processing course purchase: {e}")
@@ -101,9 +131,10 @@ def updateModule(data):
     try:
         userId = data.get("userId")
         moduleName = data.get("moduleName")
-        Page = data.get("LastPage")
+        CompletedPage = data.get("CompletedPage")
+        LastseenPage = data.get("LastseenPage")
 
-        if not all([userId, moduleName, Page]):
+        if not all([userId, moduleName, CompletedPage,LastseenPage]):
             logging.warning("Missing required fields in data: %s", json.dumps(data))
             return
 
@@ -117,13 +148,12 @@ def updateModule(data):
             return
 
         cursor.execute(
-            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "Page", "Completed") VALUES (%s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "Page" = %s',
-            (userId, moduleId[0], Page, False, Page)
+            'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s::text[], %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage", "CompletedPage" = CASE WHEN %s = ANY("UserModuleProgress"."CompletedPage") THEN "UserModuleProgress"."CompletedPage" ELSE array_append("UserModuleProgress"."CompletedPage", %s) END',
+            (userId, moduleId[0], [CompletedPage], False, LastseenPage, CompletedPage, CompletedPage)
         )
         conn.commit()
         cursor.close()
-        logging.info("Updated module progress for user: %s, module: %s, page: %s", userId, moduleName, Page)
-
+        logging.info("Updated module progress for user: %s, module: %s, page: %s", userId, moduleName, CompletedPage)
     except Exception as e:
         logging.error(f"Error while processing update module: {e}")
         if conn:

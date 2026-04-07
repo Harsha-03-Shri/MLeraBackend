@@ -23,7 +23,7 @@ class CoursePurchase(BaseModel):
     """Course purchase request model."""
     courseName: str
 
-@router.post("/purchase")
+@router.post("/purchase", status_code=201, responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def coursePurchase(course: CoursePurchase, userId: uuid.UUID = Depends(getCurrentUser)):
     """Purchase a course for the authenticated user.
     
@@ -51,7 +51,7 @@ async def coursePurchase(course: CoursePurchase, userId: uuid.UUID = Depends(get
         logging.error(f"Error purchasing course: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/progress")
+@router.get("/progress", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def getCourseProgress(courseName: str, userId: uuid.UUID = Depends(getCurrentUser)):
     """Fetch course progress statistics for authenticated user.
     
@@ -80,7 +80,7 @@ async def getCourseProgress(courseName: str, userId: uuid.UUID = Depends(getCurr
         raise HTTPException(status_code=500, detail="Internal Server Error")
         
 
-@router.get("/enrolled")
+@router.get("/enrolled", responses={403: {"description": "Forbidden - Insufficient permissions"}})
 async def getEnrolledCourses(userId: uuid.UUID = Depends(getCurrentUser)):
     """Get all courses that are currently enrolled by the user.
 

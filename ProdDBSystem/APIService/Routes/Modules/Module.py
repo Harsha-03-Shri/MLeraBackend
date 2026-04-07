@@ -16,7 +16,8 @@ router = APIRouter(prefix="/module", tags=["Module"])
 class ModuleProgress(BaseModel):
     userId: str 
     moduleName: str 
-    Page: str
+    CompletedPage: str
+    LastseenPage: str
 
 class ModuleCompletion(BaseModel):
     userId: str 
@@ -69,7 +70,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
                 detail="Module not found"
             )
 
-        cursor.execute('SELECT "Page" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
+        cursor.execute('SELECT "CompletedPage" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
         progress = cursor.fetchone()
         cursor.close()  
 
@@ -102,7 +103,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
         if conn:
             request.app.state.db_instance.releaseDBconnection(conn)
             
-@router.post("/update")
+@router.post("/update", status_code=201)
 async def updateModule(moduleProgress: ModuleProgress, request: Request):
     """
     Update the last visited page for a user's module.
@@ -124,22 +125,23 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
         HTTPException 500: On internal errors.
     """
     try:
-        logging.info(f"Processing module progress update - userId: {moduleProgress.userId}, moduleName: {moduleProgress.moduleName}, page: {moduleProgress.Page}")
+        logging.info(f"Processing module progress update - userId: {moduleProgress.userId}, moduleName: {moduleProgress.moduleName}, page: {moduleProgress.CompletedPage}")
         redis = await request.app.state.redis_instance.getRedisconnection()
         sqs = request.app.state.sqs_instance
         
         userId = moduleProgress.userId
         moduleName = moduleProgress.moduleName
-        Page = moduleProgress.Page
-
+        CompletedPage = moduleProgress.CompletedPage
+        LastseenPage = moduleProgress.LastseenPage
         data = {
             "userId": userId,
             "moduleName": moduleName,
-            "LastPage": Page
+            "CompletedPage": CompletedPage,
+            "LastseenPage": LastseenPage
         }
 
-        if not all([userId, moduleName, Page]):
-            logging.warning(f"Missing required fields in module progress data - userId: {userId}, moduleName: {moduleName}, page: {Page}")
+        if not all([userId, moduleName, CompletedPage]):
+            logging.warning(f"Missing required fields in module progress data - userId: {userId}, moduleName: {moduleName}, page: {CompletedPage}")
             raise HTTPException(
                 status_code=400,
                 detail="Missing required fields in module progress data"
@@ -151,7 +153,7 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
         }
 
         await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
-        logging.info(f"Module update event sent to SQS - userId: {userId}, moduleName: {moduleName}, page: {Page}")
+        logging.info(f"Module update event sent to SQS - userId: {userId}, moduleName: {moduleName}, page: {CompletedPage}")
 
         cachedData = await redis.hget(f"user:{userId}", "resumeModule")
 
@@ -162,7 +164,7 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
                 logging.info(f"Cleared old resume module cache - userId: {userId}, moduleName: {moduleName}")
         
         await redis.hset(f"user:{userId}", "resumeModule", json.dumps(data))
-        logging.info(f"Module progress cached in Redis - userId: {userId}, moduleName: {moduleName}, page: {Page}")
+        logging.info(f"Module progress cached in Redis - userId: {userId}, moduleName: {moduleName}, page: {CompletedPage}")
 
         await redis.hdel(f"user:{userId}", "inProgressModules")
 
@@ -178,7 +180,7 @@ async def updateModule(moduleProgress: ModuleProgress, request: Request):
             detail="Internal error while updating module progress"
         )
 
-@router.post("/complete")
+@router.post("/complete", status_code=201)
 async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
     """
     Mark a module as completed for a user.
@@ -229,8 +231,10 @@ async def completeModule(moduleCompletion: ModuleCompletion, request: Request):
         await sqs.send_message(QueueUrl=sqs.get_queue_url(), Message=json.dumps(message))
         logging.info(f"Module completion event sent to SQS - userId: {userId}, moduleName: {moduleName}, quizPercentage: {QuizPercentage}")
         
+        await redis.hdel(f"user:{userId}", "courseProgress")
         await redis.hdel(f"user:{userId}", "inProgressModules")
         await redis.hdel(f"user:{userId}", "completedModules")
+        
         logging.info(f"Cleared in-progress modules cache - userId: {userId}")
 
         logging.info(f"Module completion processed successfully - userId: {userId}, moduleName: {moduleName}")
@@ -281,7 +285,7 @@ async def getInProgressModules(userId: str, request: Request):
         
        
         query = """
-            SELECT m."ModuleName",c."CourseName",p."Page"
+            SELECT m."ModuleName",c."CourseName",p."CompletedPage"
             FROM "Module" m
             JOIN "UserModuleProgress" p ON m."ModuleId" = p."ModuleId"
             LEFT JOIN "Course" c ON c."CourseId" = m."CourseId"
