@@ -14,16 +14,16 @@ logging.basicConfig(level=logging.INFO, format="%(filename)s - %(levelname)s - %
 db = Database()
 
 courseQuery = {
-    "Supervised Learning": {
-        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "LastSeenPage") VALUES (%s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = %s',
+    "supervised learning": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage"',
         "modules": ["linear regression", "logistic regression"]
     },
-    "Unsupervised Learning": {
-        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "LastSeenPage") VALUES (%s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = %s',
+    "unsupervised learning": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage"',
         "modules": ["k-means clustering"]
     },
-    "Pre-requisite course": {
-        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "LastSeenPage") VALUES (%s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = %s',
+    "pre-requisite course": {
+        "query": 'INSERT INTO "UserModuleProgress" ("UserId", "ModuleId", "CompletedPage", "Completed", "LastSeenPage") VALUES (%s, %s, %s, %s, %s) ON CONFLICT ("UserId", "ModuleId") DO UPDATE SET "LastSeenPage" = EXCLUDED."LastSeenPage"',
         "modules": ["basics"]
     }
 }
@@ -90,12 +90,12 @@ def purchaseCourse(data):
             logging.warning("Course not found for name: %s", courseName)
             cursor.close()
             return
-        cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s)', (userId, courseId[0]))
+        cursor.execute('INSERT INTO "UserCourse" ("UserId", "CourseId") VALUES (%s, %s) ON CONFLICT ("UserId", "CourseId") DO NOTHING', (userId, courseId[0]))
         conn.commit()
 
         moduleList = courseQuery.get(courseName, {}).get("modules", [])
 
-        if moduleList is None:
+        if not moduleList:
             logging.warning("No modules found for course: %s", courseName)
             cursor.close()
             return
@@ -105,7 +105,7 @@ def purchaseCourse(data):
         conn.commit()
 
         for moduleId in moduleIds:
-            cursor.execute(courseQuery[courseName]["query"], (userId, moduleId, "Conversation","Conversation"))
+            cursor.execute(courseQuery[courseName]["query"], (userId, moduleId, [], False, "Conversation"))
         conn.commit()
         cursor.close()
         logging.info("Inserted course purchase for user: %s, course: %s", userId, courseName)
