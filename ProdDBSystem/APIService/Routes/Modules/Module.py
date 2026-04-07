@@ -70,7 +70,7 @@ async def resumeModule(userId: str, moduleName: str, request: Request):
                 detail="Module not found"
             )
 
-        cursor.execute('SELECT "CompletedPage" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
+        cursor.execute('SELECT "LastSeenPage" FROM "UserModuleProgress" WHERE "UserId" = %s AND "ModuleId" = %s', (userId, moduleId[0]))
         progress = cursor.fetchone()
         cursor.close()  
 
