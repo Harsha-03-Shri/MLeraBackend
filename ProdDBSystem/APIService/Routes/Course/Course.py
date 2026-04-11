@@ -56,6 +56,8 @@ async def purchaseCourse(coursePurchase: CoursePurchase, request: Request):
         
         await redis.hset(f"user:{coursePurchase.userId}", "purchasedCourse", coursePurchase.courseName)
         logging.info(f"Course purchase cached in Redis - userId: {coursePurchase.userId}, courseName: {coursePurchase.courseName}")
+
+        await redis.hdel(f"user:{coursePurchase.userId}", "enrolledCourse")
         
         logging.info(f"Course purchase completed successfully - userId: {coursePurchase.userId}, courseName: {coursePurchase.courseName}")
         return {"message": "Course purchase queued successfully"}
