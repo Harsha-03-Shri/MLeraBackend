@@ -285,7 +285,7 @@ async def getInProgressModules(userId: str, request: Request):
         
        
         query = """
-            SELECT m."ModuleName",c."CourseName",p."CompletedPage"
+            SELECT m."ModuleName",c."CourseName",p."LastSeenPage"
             FROM "Module" m
             JOIN "UserModuleProgress" p ON m."ModuleId" = p."ModuleId"
             LEFT JOIN "Course" c ON c."CourseId" = m."CourseId"
